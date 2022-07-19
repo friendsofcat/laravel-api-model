@@ -70,24 +70,10 @@ class Grammar extends GrammarBase
         return $url;
     }
 
-    protected function handleWheres($wheres, &$params)
+    protected function handleWheres($wheres, &$params, $nestedLevel = 0, $nestedBoolean = 'and')
     {
         foreach ($wheres as $where) {
-            // Get key and strip table name.
-            $key = $where['column'];
-            $dotIx = strrpos($key, '.');
-
-            if ($dotIx !== false) {
-                $key = substr($key, $dotIx + 1);
-
-                // If the key has dot and type = 'Basic', we need to change type to 'In'.
-                // This fixes lazy loads.
-                if ($where['type'] === 'Basic') {
-                    $where['type'] = 'In';
-                    $where['values'] = [$where['value']];
-                    unset($where['value']);
-                }
-            }
+            $key = $this->getKeyForWhereClause($where, $nestedLevel, $nestedBoolean);
 
             // Check where type.
             switch ($where['type']) {
@@ -98,7 +84,7 @@ class Grammar extends GrammarBase
                         '<=' => "{$key}_to_including",
                         '>' => "{$key}_from",
                         '<' => "{$key}_to",
-                        // no break
+                        'like' => "{$key}_like",
                         default => throw new RuntimeException('Unsupported query where operator ' . $where['operator']),
                     };
                     $params[$param] = $this->filterKeyValue($key, $where['value']);
@@ -135,6 +121,10 @@ class Grammar extends GrammarBase
 
                     break;
 
+                case 'Nested':
+                    $this->handleWheres($where['query']->wheres, $params, ++$nestedLevel, $where['boolean']);
+                    break;
+
                 default:
                     throw new RuntimeException('Unsupported query where type ' . $where['type']);
             }
@@ -158,6 +148,33 @@ class Grammar extends GrammarBase
 
             $params['sort'] = implode($this->config['default_array_value_separator'], $params['sort']);
         }
+    }
+
+    protected function getKeyForWhereClause(array &$where, int $nestedLevel, string $nestedBoolean): ?string
+    {
+        if ($where['type'] == 'Nested') return null;
+
+        // Get key and strip table name.
+        $key = $where['column'];
+        $dotIndex = strrpos($key, '.');
+
+        if ($dotIndex !== false) {
+            $key = substr($key, $dotIndex + 1);
+
+            // If the key has dot and type = 'Basic', we need to change type to 'In'.
+            // This fixes lazy loads.
+            if ($where['type'] === 'Basic') {
+                $where['type'] = 'In';
+                $where['values'] = [$where['value']];
+                unset($where['value']);
+            }
+        }
+
+        if ($nestedLevel) {
+            $key = sprintf('%+u-%s:%s:%s', $nestedLevel, $nestedBoolean, $where['boolean'], $key);
+        }
+
+        return $key;
     }
 
     /**
