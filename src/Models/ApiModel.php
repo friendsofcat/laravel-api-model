@@ -1,6 +1,6 @@
 <?php
 
-namespace MattaDavi\LaravelApiModel;
+namespace MattaDavi\LaravelApiModel\Models;
 
 use Illuminate\Database\Eloquent\Model;
 

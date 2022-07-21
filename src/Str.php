@@ -10,6 +10,7 @@ class Str
         'sort',
         'page',
         'per_page',
+        'nested',
     ];
 
     /**
@@ -22,7 +23,8 @@ class Str
         $paramIx = 0;
 
         foreach ($params as $key => $value) {
-            dump($value);
+            if (is_bool($value)) $value = (int) $value;
+
             if (! is_string($value) && ! is_integer($value)) {
                 throw new RuntimeException('Value should be a string or an integer');
             }
