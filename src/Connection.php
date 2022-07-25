@@ -4,14 +4,16 @@ namespace MattaDavi\LaravelApiModel;
 
 use Carbon\Carbon;
 use RuntimeException;
+use LZCompressor\LZString;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Cache;
-use \Illuminate\Support\Facades\Http;
 use Illuminate\Database\Grammar as GrammarBase;
 use Illuminate\Database\Connection as ConnectionBase;
 
 class Connection extends ConnectionBase
 {
-    const AUTH_TYPE_PASSPORT_CLIENT_CREDENTIALS = 'passport_client_credentials';
+    public const AUTH_TYPE_PASSPORT_CLIENT_CREDENTIALS = 'passport_client_credentials';
+    public const MAX_URL_LENGTH = 2048;
 
     /**
      * @return GrammarBase
@@ -29,23 +31,23 @@ class Connection extends ConnectionBase
         $key = 'laravel-api-model|' . $this->getDatabaseName() . '|token';
         $accessToken = Cache::get($key);
 
-        if (!$accessToken) {
+        if (! $accessToken) {
             $result = Http::post($auth['url'], [
                 'grant_type' => 'client_credentials',
                 'client_id' => $auth['client_id'],
                 'client_secret' => $auth['client_secret'],
             ])
-            ->throw()
-            ->json();
+                ->throw()
+                ->json();
 
             $accessToken = $result['access_token'];
 
             // Cache the token.
-            Cache::put($key, $accessToken, (int)(0.75 * $result['expires_in']));
+            Cache::put($key, $accessToken, (int) (0.75 * $result['expires_in']));
         }
 
         // Add access token to headers.
-        return "Authorization: Bearer $accessToken";
+        return "Authorization: Bearer ${accessToken}";
     }
 
     /**
@@ -56,42 +58,37 @@ class Connection extends ConnectionBase
      */
     public function select($query, $bindings = [], $useReadPdo = true)
     {
-        if (!$query) {
+        if (! $query) {
             return [];
         }
 
         return $this->run($query, $bindings, function ($query) {
-
             $fullUrl = $this->getDatabaseName() . $query;
 
-            // If the full URL is too long, we need to split it.
-            $urls = $this->getRequestUrls($fullUrl);
+            // If the full URL is too long, we need to compress it.
+            $url = $this->getRequestUrl($fullUrl);
 
             // Get rows for each partial URL.
-            $results = $this->getResults($urls);
+            $result = $this->getResult($url);
 
-            return $this->formatResults($results);
+            return $this->formatResult($result);
         });
     }
 
-    protected function formatResults($results)
+    protected function formatResult($result)
     {
         $appTimezone = config('app.timezone');
         $connectionTimezone = $this->getConfig('timezone');
         $configDatetimeKeys = $this->getConfig('datetime_keys');
 
-        if (!$connectionTimezone || empty($results) || $connectionTimezone === $appTimezone || empty($configDatetimeKeys)) {
-            return $results;
+        if (! $connectionTimezone || empty($result) || $connectionTimezone === $appTimezone || empty($configDatetimeKeys)) {
+            return $result;
         }
 
-        return $results->map(function($result) use ($configDatetimeKeys, $appTimezone) {
-            foreach ($configDatetimeKeys as $key) {
-                if (array_key_exists($key, $result)) {
-                    $result[$key] = Carbon::parse($result[$key])->setTimezone($appTimezone);
-                }
-            }
-
-            return $result;
+        return $result->map(function ($value, $key) use ($configDatetimeKeys, $appTimezone) {
+            return in_array($key, $configDatetimeKeys)
+                ? Carbon::parse($value)->setTimezone($appTimezone)
+                : $value;
         });
     }
 
@@ -114,90 +111,43 @@ class Connection extends ConnectionBase
             ->json();
     }
 
-    protected function getRequestUrls($url)
+    protected function getRequestUrl($url)
     {
-        $maxUrlLength = $this->getConfig('max_url_length') ?: 4000;
-
-        $urls = [$url];
+        $maxUrlLength = $this->getConfig('max_url_length') ?: self::MAX_URL_LENGTH;
 
         if (strlen($url) > $maxUrlLength) {
-            $urls = $this->splitLongUrl($url);
+            // Compressing gives us roughly 15% shorter url
+            $url = $this->compressLongUrl(urldecode($url));
+
+            if (strlen($url) > $maxUrlLength) {
+                throw new RuntimeException('Too long url');
+            }
         }
 
-        return $urls;
+        return $url;
     }
 
-    protected function splitLongUrl($url)
+    protected function compressLongUrl($url): string
     {
-        // Parse query string and get params.
         $queryIndex = strpos($url, '?');
 
         if ($queryIndex === false) {
             throw new RuntimeException('Long URLs should have query string');
         }
 
-        $params = Str::parseQuery(substr($url, $queryIndex + 1));
+        $baseUrl = substr($url, 0, $queryIndex);
+        $compressedParams = LZString::compressToEncodedURIComponent(substr($url, $queryIndex + 1));
+        $compressedUrl = sprintf('%s%s%s', $baseUrl, '?compressed=', $compressedParams);
 
-        $keyWithMostValues = collect($params)
-            ->filter(fn ($value) => is_array($value))
-            ->sortByDesc(fn ($value) => count($value))
-            ->keys()
-            ->first();
-
-        if ($keyWithMostValues === null) {
-            throw new RuntimeException('Long URLs should have at least one array in query string');
-        }
-
-        // Create partial URLs.
-        $urls = [];
-
-        foreach (array_chunk($params[$keyWithMostValues], 200) as $values) {
-            $params[$keyWithMostValues] = $values;
-            $urls[] = substr($url, 0, $queryIndex + 1) . Str::httpBuildQuery($params);
-        }
-
-        return $urls;
+        return $compressedUrl;
     }
 
-    protected function getResults($urls)
+    protected function getResult($url)
     {
-        $maxPerPage = $this->getConfig('default_params')['per_page'];
+        $data = collect($this->fetchData($url));
 
-        $results = collect();
-
-        foreach ($urls as $url) {
-            $data = collect($this->fetchData($url));
-
-            if ($data->current_page) {
-                // There is pagination. We expect to receive data objects in the 'data' property.
-                $results = $results->merge($data->data);
-
-                // If the URL does not have the 'page' parameter, get data from all the pages.
-                if (count($data->data) >= $maxPerPage && !preg_match('#(\?|&)page=\d+#', $url)) {
-                    $results = $results->merge($this->getResultsFromAllPages($data, $url, $maxPerPage));
-                }
-            } else {
-                // No pagination.
-                $results = $results->merge($data);
-            }
-        }
-
-        return $results;
-    }
-
-    protected function getResultsFromAllPages($data, $url, $maxPerPage)
-    {
-        $results = collect();
-        $page = $data->current_page;
-        $hasQueryString = str_contains($url, '?');
-
-        while (count($data->data) >= $maxPerPage) {
-            $page++;
-            $nextUrl = $url . ($hasQueryString ? '&' : '?') . "page=$page";
-            $data = collect($this->fetchData($nextUrl));
-            $results = $results->merge($data->data);
-        }
-
-        return $results;
+        return $data->current_page
+        ? $data->data
+        : $data;
     }
 }
