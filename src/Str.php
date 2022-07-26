@@ -17,7 +17,7 @@ class Str
      * @param array $params
      * @return string
      */
-    public static function httpBuildQuery(array $params)
+    public static function httpBuildQuery(array $params): string
     {
         $query = '';
         $paramIx = 0;

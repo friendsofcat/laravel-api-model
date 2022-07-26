@@ -10,25 +10,40 @@ use Illuminate\Database\Query\Grammars\Grammar as GrammarBase;
 
 class Grammar extends GrammarBase
 {
-    private $config = [];
+    private array $config = [];
 
-    private const NESTED_TYPES = [
-        'Nested',
-        'Exists',
-        'NotExists',
-    ];
+    /*
+     * Simple identifier incremented when accessed.
+     * Used as a key prefix to ensure distinction for where types such as 'Column' or 'raw'.
+     */
+    private int $uniqueIdentifier = 0;
 
-    private const NEEDS_IDENTIFIER = [
-        'raw',
-        'Column',
-    ];
+    /*
+     * If query is using nested logic,
+     * attach ordered 'legend' which will help to understand nested logic.
+     *
+     * Value example: ['and', '0:or']
+     *
+     * 0:or
+     * ------------
+     * 0 => index of parent nest in ordered legend
+     * or => logic of nest. Could be 'and' or 'or' (results of 'where(...)' or 'orWhere(...)')
+     */
+    protected array $nestedIds = [];
+
+    /*
+     * Index of parent for current nest from $nestedIds
+     *
+     * Possible values:
+     * -1 => no nested logic in current query
+     * <0,∞) => index of parent for current nest from $nestedIds
+     */
+    protected int $nestedCursor = -1;
 
     private const CONFIG_DEFAULTS = [
         'default_array_value_separator' => ',',
         'soft_deletes_column' => null,
     ];
-
-    private int $uniqueIdentifier = 0;
 
     public function getUniqueIdentifier(): int
     {
@@ -53,151 +68,134 @@ class Grammar extends GrammarBase
     }
 
     /**
+     * @param  Builder  $query
+     * @return string
+     */
+    public function compileExists(Builder $query): string
+    {
+        $urlQuery = $this->compileSelect($query);
+
+        $queryType = str_contains($urlQuery, '?')
+            ? '&queryType=exists'
+            : '?queryType=exists';
+
+        return $urlQuery . $queryType;
+    }
+
+    /**
+     * @param  Builder  $query
+     * @param  array  $aggregate
+     * @return string
+     */
+    protected function compileAggregate(Builder $query, $aggregate): string
+    {
+        $query->aggregate = null;
+        $urlQuery = $this->compileSelect($query);
+
+        $queryType = str_contains($urlQuery, '?')
+            ? sprintf('&queryType=%s', $aggregate['function'])
+            : sprintf('?queryType=%s', $aggregate['function']);
+
+        return $urlQuery . $queryType;
+    }
+
+    /**
+     * @param  Builder  $query
+     * @param array $params
+     * @return string
+     */
+    protected function compileUrl(Builder $query, array $params = []): string
+    {
+        $url = "/{$query->from}";
+
+        return empty($params)
+            ? $url
+            : sprintf('%s?%s', $url, Str::httpBuildQuery($params));
+    }
+
+    /**
      * @param Builder $query
-     * @return string|false
+     * @return string
      */
     public function compileSelect(Builder $query): string
     {
+        if ($query->aggregate) {
+            return $this->compileAggregate($query, $query->aggregate);
+        }
+
         $params = $this->config['default_params'] ?? [];
 
         $this->handleWheres($query->wheres, $params);
         $this->handleOrders($query->orders, $params);
 
-
         if ($query->limit) {
             if ($query->limit >= $params['per_page']) {
                 throw new RuntimeException('Query limit should be less than ' . $params['per_page']);
             }
+
             $params['per_page'] = $query->limit;
         }
 
-        $url = "/{$query->from}";
-
-        if (! empty($params)) {
-            $url .= '?';
-            $queryStr = Str::httpBuildQuery($params);
-
-            if ($queryStr === false) {
-                return false;
-            }
-            $url .= $queryStr;
-        }
-
-        dd(urldecode($url));
-
-        return $url;
+        return $this->compileUrl($query, $params);
     }
 
-    protected function handleWheres($wheres, &$params, $nestedCursor = -1, $nestedLevel = -1, &$nestedIds = [])
+    protected function handleWheres($wheres, &$params, $nestedLevel = -1)
     {
         foreach ($wheres as $where) {
-            $key = $this->getKeyForWhereClause($where, $nestedCursor >= 0 ? $nestedCursor : null);
+            /*
+             * Every supported whereType has its own method.
+             * i.e. handleWhereBasic(...)
+             */
+            $whereHandler = sprintf('handleWhere%s', \Str::ucfirst($where['type']));
 
-            // Check where type.
-            switch ($where['type']) {
-                case 'Basic':
-                    $param = sprintf("%s:%s", $key, $where['operator']);
-                    $params[$param] = $this->filterKeyValue($key, $where['value']);
-
-                    break;
-
-                case 'Column':
-                    $params[$key] = $this->filterKeyValue($key, [$where['first'], $where['operator'], $where['second']]);
-
-                    break;
-                case 'In':
-                case 'InRaw':
-                    $params[$key] = $this->filterKeyValue($key, $where['values']);
-
-                    break;
-
-                case 'between':
-                    $params["$key:>"] = $this->filterKeyValue($key, $where['values'][0]);
-                    $params["$key:<"] = $this->filterKeyValue($key, $where['values'][1]);
-
-                    break;
-
-                case 'Null':
-                    if ($key == $this->config['soft_deletes_column']) {
-                        $params["trashed"] = 0;
-                    } else {
-                        $params["$key:is_null"] = 1;
-                    }
-
-                    break;
-
-                case 'NotNull':
-                    if ($key == $this->config['soft_deletes_column']) {
-                        $params["trashed"] = 'only';
-                    } else {
-                        $params["$key:is_not_null"] = 1;
-                    }
-
-                    break;
-
-                case 'Nested':
-                case 'Exists':
-                case 'NotExists':
-                    $nestedTypePostfix = '';
-
-                    if ($where['type'] == 'Exists') $nestedTypePostfix = ':e';
-                    else if ($where['type'] == 'NotExists') $nestedTypePostfix = ':ne';
-
-                    $nestedIds[] = $nestedCursor >= 0
-                        ? sprintf("%+u:%s%s", $nestedCursor, $where['boolean'], $nestedTypePostfix)
-                        : sprintf("%s", $where['boolean']);
-
-                    $nestedCursor = sizeof($nestedIds) - 1;
-
-                    $this->handleWheres($where['query']->wheres, $params, $nestedCursor, $nestedLevel + 1, $nestedIds);
-
-                    $nestedCursor--;
-
-                    if ($nestedLevel <= 0) {
-                        $nestedCursor = 0;
-                    }
-
-                    break;
-
-                case 'raw':
-                    $params[$key] = $this->filterKeyValue($key, $where['sql']);
-
-                    break;
-
-                default:
-                    throw new RuntimeException('Unsupported query where type ' . $where['type']);
+            if (! method_exists($this, $whereHandler)) {
+                throw new RuntimeException('Unsupported query where type ' . $where['type']);
             }
 
-            if (! isset($params['trashed']) && ! is_null($this->config['soft_deletes_column'])) {
-                $params['trashed'] = 'with';
-            }
+            $this->{$whereHandler}($where, $params, $nestedLevel);
+        }
 
-            if (sizeof($nestedIds)) {
-                $params['nested'] = implode($this->config['default_array_value_separator'], $nestedIds);
-            }
+        /*
+         * If trashed logic is not specified and model is using soft deletes,
+         * retrieve results with trashed.
+         */
+        if (! isset($params['trashed']) && ! is_null($this->config['soft_deletes_column'])) {
+            $params['trashed'] = 'with';
+        }
+
+        /*
+         * If query is using nested logic,
+         * attach ordered 'legend' which will help to understand nested logic.
+         *
+         * Value example: 0:and
+         *
+         * 0 => index of parent nest in ordered legend
+         * and => logic of nest. Could be 'and' or 'or' (results of 'where(...)' or 'orWhere(...)')
+         */
+        if (sizeof($this->nestedIds)) {
+            $params['nested'] = implode($this->config['default_array_value_separator'], $this->nestedIds);
         }
     }
 
     protected function handleOrders($orders, &$params)
     {
-        if (! empty($orders)) {
-            $params['sort'] = [];
+        if (empty($orders)) return;
 
-            foreach ($orders as $order) {
-                $params['sort'][] = ($order['direction'] === 'desc')
-                    ? '-' . $order['column']
-                    : $order['column'];
-            }
+        $params['sort'] = [];
 
-            $params['sort'] = implode($this->config['default_array_value_separator'], $params['sort']);
+        foreach ($orders as $order) {
+            $params['sort'][] = ($order['direction'] === 'desc')
+                ? '-' . $order['column']
+                : $order['column'];
         }
+
+        $params['sort'] = implode($this->config['default_array_value_separator'], $params['sort']);
     }
 
-    protected function getKeyForWhereClause(array &$where, ?int $nestedId = null): ?string
+    protected function getKeyForWhereClause(array &$where, $assignId = false): ?string
     {
-        if (in_array($where['type'], self::NESTED_TYPES)) return null;
         // Get key and strip table name.
-        $key = in_array($where['type'], self::NEEDS_IDENTIFIER)
+        $key = $assignId
             ? sprintf('%s-%s', $this->getUniqueIdentifier(), strtolower($where['type']))
             : $where['column'];
 
@@ -214,6 +212,8 @@ class Grammar extends GrammarBase
                 unset($where['value']);
             }
         }
+
+        $nestedId = $this->nestedCursor >= 0 ? $this->nestedCursor : null;
 
         if (! is_null($nestedId)) {
             $key = sprintf('%+u:%s:%s', $nestedId, $where['boolean'], $key);
@@ -240,6 +240,7 @@ class Grammar extends GrammarBase
                 $value = $this->formatDateTime($value, $appDtZone, $connDtZone);
             } elseif (is_array($value)) {
                 $value = array_map(function ($value) use ($connDtZone, $appDtZone) {
+
                     return is_string($value) && strlen($value) === 19
                         ? $this->formatDateTime($value, $appDtZone, $connDtZone)
                         : $value;
@@ -257,5 +258,92 @@ class Grammar extends GrammarBase
     private function formatDateTime($value, $appDtZone, $connDtZone)
     {
         return (new DateTime($value, $appDtZone))->setTimezone($connDtZone)->format('Y-m-d H:i:s');
+    }
+
+    private function handleWhereBasic($where, &$params)
+    {
+        $key = $this->getKeyForWhereClause($where);
+        $param = sprintf("%s:%s", $key, $where['operator']);
+        $params[$param] = $this->filterKeyValue($key, $where['value']);
+    }
+
+    private function handleWhereColumn($where, &$params)
+    {
+        $key = $this->getKeyForWhereClause($where, true);
+        $params[$key] = $this->filterKeyValue($key, [$where['first'], $where['operator'], $where['second']]);
+    }
+
+    private function handleWhereIn($where, &$params)
+    {
+        $key = $this->getKeyForWhereClause($where);
+        $params[$key] = $this->filterKeyValue($key, $where['values']);
+    }
+
+    private function handleWhereInRaw($where, $params)
+    {
+        $key = $this->getKeyForWhereClause($where);
+        $this->handleWhereIn($where, $params);
+    }
+
+    private function handleWhereBetween($where, &$params)
+    {
+        $key = $this->getKeyForWhereClause($where);
+        $params["$key:>"] = $this->filterKeyValue($key, $where['values'][0]);
+        $params["$key:<"] = $this->filterKeyValue($key, $where['values'][1]);
+    }
+
+    private function handleWhereNull($where, &$params)
+    {
+        $key = $this->getKeyForWhereClause($where);
+
+        if ($key == $this->config['soft_deletes_column']) {
+            $params["trashed"] = 0;
+        } else {
+            $params["$key:is_null"] = 1;
+        }
+    }
+
+    private function handleWhereNotNull($where, &$params)
+    {
+        $key = $this->getKeyForWhereClause($where);
+
+        if ($key == $this->config['soft_deletes_column']) {
+            $params["trashed"] = 'only';
+        } else {
+            $params["$key:is_not_null"] = 1;
+        }
+    }
+
+    private function handleWhereNested($where, &$params, $nestedLevel, $nestedTypePostfix = '')
+    {
+        $this->nestedIds[] = $this->nestedCursor >= 0
+            ? sprintf("%+u:%s%s", $this->nestedCursor, $where['boolean'], $nestedTypePostfix)
+            : sprintf("%s", $where['boolean']);
+
+        $this->nestedCursor = sizeof($this->nestedIds) - 1;
+
+        $this->handleWheres($where['query']->wheres, $params, $nestedLevel + 1);
+
+        $this->nestedCursor--;
+
+        if ($nestedLevel <= 0) {
+            $this->nestedCursor = 0;
+        }
+    }
+
+    private function handleWhereExists($where, &$params, $nestedLevel)
+    {
+        $this->handleWhereNested($where, $params, $nestedLevel, ':e');
+    }
+
+    private function handleWhereNotExists($where, &$params, $nestedLevel)
+    {
+        $this->handleWhereNested($where, $params, $nestedLevel, ':ne');
+    }
+
+    private function handleWhereRaw($where, &$params)
+    {
+        $key = $this->getKeyForWhereClause($where, true);
+        $params[$key] = $this->filterKeyValue($key, $where['sql']);
     }
 }

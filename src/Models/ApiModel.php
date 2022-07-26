@@ -4,7 +4,7 @@ namespace MattaDavi\LaravelApiModel\Models;
 
 use Illuminate\Database\Eloquent\Model;
 
-class ApiModel extends Model
+abstract class ApiModel extends Model
 {
     public function getConnection()
     {
