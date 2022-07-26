@@ -11,6 +11,7 @@ class Str
         'page',
         'per_page',
         'nested',
+        'queryType',
     ];
 
     /**
