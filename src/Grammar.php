@@ -97,8 +97,16 @@ class Grammar extends GrammarBase
         $this->handleWheres($query->wheres, $params);
         $this->handleOrders($query->orders, $params);
         $this->handleLimitOffset($query, $params);
+        $this->handleGroupBy($query, $params);
 
         return $this->compileUrl($query, $params);
+    }
+
+    protected function handleGroupBy($query, &$params)
+    {
+        if (is_null($query->groups)) return;
+
+        $params['groupBy'] = implode($this->config['default_array_value_separator'], $query->groups);
     }
 
     protected function handleLimitOffset($query, &$params)

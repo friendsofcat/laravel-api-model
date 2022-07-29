@@ -19,6 +19,7 @@ class Str
         'selectRaw',
         'limit',
         'offset',
+        'groupBy',
     ];
 
     /**
