@@ -6,6 +6,9 @@ use RuntimeException;
 
 class Str
 {
+    /*
+     * Params with key listed in this array won't be wrapped by 'filter[]'
+     */
     protected const NON_FILTER_VALUES = [
         'sort',
         'page',
@@ -14,6 +17,8 @@ class Str
         'queryType',
         'fields',
         'selectRaw',
+        'limit',
+        'offset',
     ];
 
     /**
@@ -23,16 +28,20 @@ class Str
     public static function httpBuildQuery(array $params): string
     {
         $query = '';
-        $paramIx = 0;
+        $paramIndex = 0;
 
         foreach ($params as $key => $value) {
+            /*
+             * As everything is treated as string in URL,
+             * convert bool values to integer variants.
+             */
             if (is_bool($value)) $value = (int) $value;
 
             if (! is_string($value) && ! is_integer($value)) {
                 throw new RuntimeException('Value should be a string or an integer');
             }
 
-            if ($paramIx++) $query .= '&';
+            if ($paramIndex++) $query .= '&';
 
             if ( ! in_array($key, self::NON_FILTER_VALUES)) {
                 $query .= "filter[$key]=";

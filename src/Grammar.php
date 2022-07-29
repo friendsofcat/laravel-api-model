@@ -102,16 +102,20 @@ class Grammar extends GrammarBase
         $this->handleSelect($query, $params);
         $this->handleWheres($query->wheres, $params);
         $this->handleOrders($query->orders, $params);
-
-        if ($query->limit) {
-            if ($query->limit >= $params['per_page']) {
-                throw new RuntimeException('Query limit should be less than ' . $params['per_page']);
-            }
-
-            $params['per_page'] = $query->limit;
-        }
+        $this->handleLimitOffset($query, $params);
 
         return $this->compileUrl($query, $params);
+    }
+
+    protected function handleLimitOffset($query, &$params)
+    {
+        if ($query->limit) {
+            $params['limit'] = $query->limit;
+        }
+
+        if ($query->offset) {
+            $params['offset'] = $query->offset;
+        }
     }
 
     protected function handleSelect($query, &$params)
