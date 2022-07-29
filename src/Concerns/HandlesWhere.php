@@ -221,7 +221,7 @@ trait HandlesWhere
     private function handleWhereIn($where, &$params): void
     {
         $key = $this->getKeyForWhereClause($where);
-        $params[$key] = $this->filterKeyValue($where['column'] ?? '', $where['values']);
+        $params["$key:in"] = $this->filterKeyValue($where['column'] ?? '', $where['values']);
     }
 
     private function handleWhereInRaw($where, $params): void
@@ -229,11 +229,32 @@ trait HandlesWhere
         $this->handleWhereIn($where, $params);
     }
 
+    private function handleWhereNotIn($where, &$params): void
+    {
+        $key = $this->getKeyForWhereClause($where);
+        $params["$key:not_in"] = $this->filterKeyValue($where['column'] ?? '', $where['values']);
+    }
+
+    private function handleWhereNotInRaw($where, $params): void
+    {
+        $this->handleWhereNotIn($where, $params);
+    }
+
     private function handleWhereBetween($where, &$params): void
     {
         $key = $this->getKeyForWhereClause($where);
-        $params["$key:>"] = $this->filterKeyValue($where['column'] ?? '', $where['values'][0]);
-        $params["$key:<"] = $this->filterKeyValue($where['column'] ?? '', $where['values'][1]);
+        $params["$key:gt"] = $this->filterKeyValue($where['column'] ?? '', $where['values'][0]);
+        $params["$key:lt"] = $this->filterKeyValue($where['column'] ?? '', $where['values'][1]);
+    }
+
+    private function handleWhereNotBetween($where, &$params): void
+    {
+        $value = [
+            $this->filterKeyValue($where['column'] ?? '', $where['values'][0]),
+            $this->filterKeyValue($where['column'] ?? '', $where['values'][1]),
+        ];
+        $key = $this->getKeyForWhereClause($where);
+        $params["$key:not_between"] = implode($this->config['default_array_value_separator'], $value);
     }
 
     private function handleWhereNull($where, &$params): void
@@ -256,6 +277,36 @@ trait HandlesWhere
         } else {
             $params["$key:is_not_null"] = 1;
         }
+    }
+
+    private function handleWhereFullText($where, &$params): void
+    {
+        $key = $this->getKeyForWhereClause($where);
+        $params["$key:fulltext"] = $this->filterKeyValue($where['column'] ?? '', $where['value']);
+    }
+
+    private function handleWhereDate($where, &$params): void
+    {
+        $key = $this->getKeyForWhereClause($where);
+        $params["$key:date"] = $this->filterKeyValue($where['column'] ?? '', $where['value']);
+    }
+
+    private function handleWhereDay($where, &$params): void
+    {
+        $key = $this->getKeyForWhereClause($where);
+        $params["$key:day"] = $this->filterKeyValue($where['column'] ?? '', $where['value']);
+    }
+
+    private function handleWhereYear($where, &$params): void
+    {
+        $key = $this->getKeyForWhereClause($where);
+        $params["$key:year"] = $this->filterKeyValue($where['column'] ?? '', $where['value']);
+    }
+
+    private function handleWhereTime($where, &$params): void
+    {
+        $key = $this->getKeyForWhereClause($where);
+        $params["$key:time"] = $this->filterKeyValue($where['column'] ?? '', $where['value']);
     }
 
     private function handleWhereNested($where, &$params, $nestedLevel, $nestedTypePostfix = ''): void
