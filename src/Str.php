@@ -12,6 +12,8 @@ class Str
         'per_page',
         'nested',
         'queryType',
+        'fields',
+        'selectRaw',
     ];
 
     /**

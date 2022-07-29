@@ -4,6 +4,7 @@ namespace MattaDavi\LaravelApiModel;
 
 use RuntimeException;
 use Illuminate\Database\Query\Builder;
+use Illuminate\Database\Query\Expression;
 use MattaDavi\LaravelApiModel\Concerns\HandlesWhere;
 use Illuminate\Database\Query\Grammars\Grammar as GrammarBase;
 
@@ -93,6 +94,7 @@ class Grammar extends GrammarBase
 
         $params = $this->config['default_params'] ?? [];
 
+        $this->handleSelect($query, $params);
         $this->handleWheres($query->wheres, $params);
         $this->handleOrders($query->orders, $params);
 
@@ -105,6 +107,37 @@ class Grammar extends GrammarBase
         }
 
         return $this->compileUrl($query, $params);
+    }
+
+    protected function handleSelect($query, &$params)
+    {
+        /*
+         * Early return if no custom select is specified.
+         */
+        if (count($query->columns) == 1 && $query->columns[0] == '*') return;
+
+        $fields = [];
+        $rawStatements = [];
+
+        foreach ($query->columns as $column) {
+            if (is_string($column)) {
+                $fields[] = $column;
+            } else if ($column instanceof Expression){
+                $rawStatements[] = $column->getValue();
+            } else {
+                throw new RuntimeException('Closures in select statements are currently not supported');
+                /*
+                 * For possible future implementation, we can run this closure like this:
+                 * $column($query->newQuery());
+                 */
+            }
+        }
+
+        if (count($rawStatements)) {
+            $params['selectRaw'] = implode($this->config['default_array_value_separator'], $rawStatements);
+        }
+
+        $params['fields'] = implode($this->config['default_array_value_separator'], $fields);
     }
 
     protected function handleOrders($orders, &$params)
