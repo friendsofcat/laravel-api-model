@@ -8,6 +8,28 @@ use RuntimeException;
 
 trait HandlesWhere
 {
+    public array $operatorsWithAlias = [
+        '=' => 'e',
+        '<' => 'lt',
+        '>' => 'gt',
+        '<=' => 'lte',
+        '>=' => 'gte',
+        '<>' => 'ne',
+        '!=' => 'ne',
+        '|' => 'bo',
+        '^' => 'beo',
+        '<<' => 'ls',
+        '>>' => 'rs',
+        '&' => 'ba',
+        '&~' => 'bai',
+        '~' => 'bi',
+        '~*' => 'bim',
+        '!~' => 'nbi',
+        '!~*' => 'nbim',
+        '~~*' => 'bibim',
+        '!~~*' => 'nbibim',
+    ];
+
     /*
      * Simple identifier incremented when accessed.
      * Used as a key prefix to ensure distinction for where types such as 'Column' or 'raw'.
@@ -76,11 +98,11 @@ trait HandlesWhere
             }
         }
 
-        $nestedId = $this->nestedCursor >= 0 ? $this->nestedCursor : null;
-
         /*
          * When we are dealing with nested logic, the nest id is prepended to the key.
          */
+        $nestedId = $this->nestedCursor >= 0 ? $this->nestedCursor : null;
+
         if (! is_null($nestedId)) {
             $key = sprintf('%+u:%s:%s', $nestedId, $where['boolean'], $key);
         }
@@ -126,6 +148,13 @@ trait HandlesWhere
         return (new DateTime($value, $appDtZone))->setTimezone($connDtZone)->format('Y-m-d H:i:s');
     }
 
+    protected function getUrlSafeOperator($where)
+    {
+        if (! isset($where['operator'])) return null;
+
+        return $this->operatorsWithAlias[$where['operator']] ?? $where['operator'];
+    }
+
     protected function handleWheres($wheres, &$params, $nestedLevel = -1): void
     {
         foreach ($wheres as $where) {
@@ -168,14 +197,25 @@ trait HandlesWhere
 
     private function handleWhereBasic($where, &$params): void
     {
-        $param = sprintf("%s:%s", $this->getKeyForWhereClause($where), $where['operator']);
+        $param = sprintf(
+            "%s:%s",
+            $this->getKeyForWhereClause($where),
+            str_replace(' ', '_', $this->getUrlSafeOperator($where))
+        );
+
         $params[$param] = $this->filterKeyValue($where['column'] ?? '', $where['value']);
     }
 
     private function handleWhereColumn($where, &$params): void
     {
+        $value = [
+            $where['first'],
+            $this->getUrlSafeOperator($where),
+            $where['second']
+        ];
+
         $key = $this->getKeyForWhereClause($where, true);
-        $params[$key] = $this->filterKeyValue('', [$where['first'], $where['operator'], $where['second']]);
+        $params[$key] = $this->filterKeyValue('', $value);
     }
 
     private function handleWhereIn($where, &$params): void
