@@ -25,13 +25,7 @@ class Grammar extends GrammarBase
      */
     public function setConfig(array $config): self
     {
-        $this->config = $config;
-
-        foreach (self::CONFIG_DEFAULTS as $configKey => $defaultValue) {
-            if(! data_get($this->config, $configKey, false)) {
-                $this->config[$configKey] = $defaultValue;
-            }
-        }
+        $this->config = array_merge(self::CONFIG_DEFAULTS, $config);
 
         return $this;
     }
