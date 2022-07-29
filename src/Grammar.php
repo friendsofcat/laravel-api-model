@@ -65,6 +65,11 @@ class Grammar extends GrammarBase
             ? sprintf('&queryType=%s', $aggregate['function'])
             : sprintf('?queryType=%s', $aggregate['function']);
 
+        if (isset($aggregate['columns'])) {
+            $columns = implode($this->config['default_array_value_separator'], $aggregate['columns']);
+            $queryType .= sprintf(',%s', $columns);
+        }
+
         return $urlQuery . $queryType;
     }
 
