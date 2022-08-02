@@ -134,7 +134,7 @@ trait HandlesWhere
         return (new DateTime($value, $appDtZone))->setTimezone($connDtZone)->format('Y-m-d H:i:s');
     }
 
-    protected function handleWheres($wheres, &$params, $nestedLevel = -1): void
+    protected function handleWheres($wheres, $nestedLevel = -1): void
     {
         foreach ($wheres as $where) {
             /*
@@ -147,15 +147,15 @@ trait HandlesWhere
                 throw new RuntimeException('Unsupported query where type ' . $where['type']);
             }
 
-            $this->$whereHandler($where, $params, $nestedLevel);
+            $this->$whereHandler($where, $nestedLevel);
         }
 
         /*
          * If trashed logic is not specified and model is using soft deletes,
          * retrieve results with trashed. (due to JSON:API client compatibility)
          */
-        if (! isset($params['trashed']) && ! is_null($this->config['soft_deletes_column'])) {
-            $params['trashed'] = 'with';
+        if (! isset($this->getUrlParams()['trashed']) && ! is_null($this->config['soft_deletes_column'])) {
+            $this->setUrlParam('trashed', 'with');
         }
 
         /*
@@ -170,22 +170,22 @@ trait HandlesWhere
          * and  => logic of nest. Could be 'and' or 'or' (results of 'where(function(){})', 'orWhere(function(){})')
          */
         if (sizeof($this->nestedIds)) {
-            $params['nested'] = $this->toQueryArray($this->nestedIds);
+            $this->setUrlParam('nested', $this->nestedIds);
         }
     }
 
-    private function handleWhereBasic($where, &$params): void
+    private function handleWhereBasic($where): void
     {
-        $param = sprintf(
+        $key = sprintf(
             "%s:%s",
             $this->getKeyForWhereClause($where),
             $this->getUrlSafeOperator($where)
         );
 
-        $params[$param] = $this->filterKeyValue($where['column'] ?? '', $where['value']);
+        $this->setUrlParam($key, $this->filterKeyValue($where['column'] ?? '', $where['value']));
     }
 
-    private function handleWhereColumn($where, &$params): void
+    private function handleWhereColumn($where): void
     {
         $value = [
             $where['first'],
@@ -194,101 +194,101 @@ trait HandlesWhere
         ];
 
         $key = $this->getKeyForWhereClause($where, true);
-        $params[$key] = $this->filterKeyValue('', $value);
+        $this->setUrlParam($key, $this->filterKeyValue('', $value));
     }
 
-    private function handleWhereIn($where, &$params): void
+    private function handleWhereIn($where): void
     {
         $key = $this->getKeyForWhereClause($where);
-        $params["$key:in"] = $this->filterKeyValue($where['column'] ?? '', $where['values']);
+        $this->setUrlParam("$key:in", $this->filterKeyValue($where['column'] ?? '', $where['values']));
     }
 
-    private function handleWhereInRaw($where, $params): void
+    private function handleWhereInRaw($where): void
     {
-        $this->handleWhereIn($where, $params);
+        $this->handleWhereIn($where);
     }
 
-    private function handleWhereNotIn($where, &$params): void
-    {
-        $key = $this->getKeyForWhereClause($where);
-        $params["$key:not_in"] = $this->filterKeyValue($where['column'] ?? '', $where['values']);
-    }
-
-    private function handleWhereNotInRaw($where, $params): void
-    {
-        $this->handleWhereNotIn($where, $params);
-    }
-
-    private function handleWhereBetween($where, &$params): void
+    private function handleWhereNotIn($where): void
     {
         $key = $this->getKeyForWhereClause($where);
-        $params["$key:gt"] = $this->filterKeyValue($where['column'] ?? '', $where['values'][0]);
-        $params["$key:lt"] = $this->filterKeyValue($where['column'] ?? '', $where['values'][1]);
+        $this->setUrlParam("$key:not_in", $this->filterKeyValue($where['column'] ?? '', $where['values']));
     }
 
-    private function handleWhereNotBetween($where, &$params): void
+    private function handleWhereNotInRaw($where): void
+    {
+        $this->handleWhereNotIn($where);
+    }
+
+    private function handleWhereBetween($where): void
+    {
+        $key = $this->getKeyForWhereClause($where);
+        $this->setUrlParam("$key:gt", $this->filterKeyValue($where['column'] ?? '', $where['values'][0]));
+        $this->setUrlParam("$key:lt", $this->filterKeyValue($where['column'] ?? '', $where['values'][1]));
+    }
+
+    private function handleWhereNotBetween($where): void
     {
         $value = [
             $this->filterKeyValue($where['column'] ?? '', $where['values'][0]),
             $this->filterKeyValue($where['column'] ?? '', $where['values'][1]),
         ];
         $key = $this->getKeyForWhereClause($where);
-        $params["$key:not_between"] = $this->toQueryArray($value);
+        $this->setUrlParam("$key:not_between", $value);
     }
 
-    private function handleWhereNull($where, &$params): void
+    private function handleWhereNull($where): void
     {
         $key = $this->getKeyForWhereClause($where);
 
         if ($key == $this->config['soft_deletes_column']) {
-            $params["trashed"] = 0;
+            $this->setUrlParam("trashed", 0);
         } else {
-            $params["$key:is_null"] = 1;
+            $this->setUrlParam("$key:is_null", 1);
         }
     }
 
-    private function handleWhereNotNull($where, &$params): void
+    private function handleWhereNotNull($where): void
     {
         $key = $this->getKeyForWhereClause($where);
 
         if ($key == $this->config['soft_deletes_column']) {
-            $params["trashed"] = 'only';
+            $this->setUrlParam("trashed", 'only');
         } else {
-            $params["$key:is_not_null"] = 1;
+            $this->setUrlParam("$key:is_not_null", 1);
         }
     }
 
-    private function handleWhereFullText($where, &$params): void
+    private function handleWhereFullText($where): void
     {
         $key = $this->getKeyForWhereClause($where);
-        $params["$key:fulltext"] = $this->filterKeyValue($where['column'] ?? '', $where['value']);
+        $this->setUrlParam("$key:fulltext", $this->filterKeyValue($where['column'] ?? '', $where['value']));
     }
 
-    private function handleWhereDate($where, &$params): void
+    private function handleWhereDate($where): void
     {
         $key = $this->getKeyForWhereClause($where);
-        $params["$key:date"] = $this->filterKeyValue($where['column'] ?? '', $where['value']);
+        $this->setUrlParam("$key:date", $this->filterKeyValue($where['column'] ?? '', $where['value']));
     }
 
-    private function handleWhereDay($where, &$params): void
+    private function handleWhereDay($where): void
     {
         $key = $this->getKeyForWhereClause($where);
-        $params["$key:day"] = $this->filterKeyValue($where['column'] ?? '', $where['value']);
+        $this->setUrlParam("$key:day", $this->filterKeyValue($where['column'] ?? '', $where['value']));
     }
 
-    private function handleWhereYear($where, &$params): void
+    private function handleWhereYear($where): void
     {
         $key = $this->getKeyForWhereClause($where);
-        $params["$key:year"] = $this->filterKeyValue($where['column'] ?? '', $where['value']);
+        $this->setUrlParam("$key:year", $this->filterKeyValue($where['column'] ?? '', $where['value']));
     }
 
-    private function handleWhereTime($where, &$params): void
+    private function handleWhereTime($where): void
     {
         $key = $this->getKeyForWhereClause($where);
-        $params["$key:time"] = $this->filterKeyValue($where['column'] ?? '', $where['value']);
+        $this->setUrlParam("$key:time", $this->filterKeyValue($where['column'] ?? '', $where['value']));
     }
 
-    private function handleWhereNested($where, &$params, $nestedLevel, $nestedTypePostfix = ''): void
+    private function handleWhereNested($where, $nestedLevel, $nestedTypePostfix = ''): void
     {
         $this->nestedIds[] = $this->nestedCursor >= 0
             ? sprintf("%+u:%s%s", $this->nestedCursor, $where['boolean'], $nestedTypePostfix)
@@ -296,7 +296,7 @@ trait HandlesWhere
 
         $this->nestedCursor = sizeof($this->nestedIds) - 1;
 
-        $this->handleWheres($where['query']->wheres, $params, $nestedLevel + 1);
+        $this->handleWheres($where['query']->wheres, $nestedLevel + 1);
 
         $this->nestedCursor--;
 
@@ -305,19 +305,19 @@ trait HandlesWhere
         }
     }
 
-    private function handleWhereExists($where, &$params, $nestedLevel): void
+    private function handleWhereExists($where, $nestedLevel): void
     {
-        $this->handleWhereNested($where, $params, $nestedLevel, ':e');
+        $this->handleWhereNested($where, $nestedLevel, ':e');
     }
 
-    private function handleWhereNotExists($where, &$params, $nestedLevel): void
+    private function handleWhereNotExists($where, $nestedLevel): void
     {
-        $this->handleWhereNested($where, $params, $nestedLevel, ':ne');
+        $this->handleWhereNested($where, $nestedLevel, ':ne');
     }
 
-    private function handleWhereRaw($where, &$params): void
+    private function handleWhereRaw($where): void
     {
         $key = $this->getKeyForWhereClause($where, true);
-        $params[$key] = $this->filterKeyValue('', $where['sql']);
+        $this->setUrlParam($key, $this->filterKeyValue('', $where['sql']));
     }
 }

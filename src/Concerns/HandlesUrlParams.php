@@ -4,6 +4,8 @@ namespace MattaDavi\LaravelApiModel\Concerns;
 
 trait HandlesUrlParams
 {
+    private array $urlParams = [];
+
     public array $operatorsWithAlias = [
         '=' => 'e',
         '<' => 'lt',
@@ -42,6 +44,25 @@ trait HandlesUrlParams
 
     protected function toQueryArray(array $value): string
     {
-        return implode($this->config['default_array_value_separator'], $value);
+        return implode($this?->config['default_array_value_separator'] ?? ',', $value);
+    }
+
+    public function setUrlParams(mixed $value): void
+    {
+        $this->urlParams = $value;
+    }
+
+    public function setUrlParam(string $key, mixed $value): void
+    {
+        if (is_array($value)) {
+            $value = $this->toQueryArray($value);
+        }
+
+        $this->urlParams[$key] = $value;
+    }
+
+    public function getUrlParams(): array
+    {
+        return $this->urlParams;
     }
 }

@@ -28,6 +28,7 @@ class Grammar extends GrammarBase
     public function setConfig(array $config): self
     {
         $this->config = array_merge(self::CONFIG_DEFAULTS, $config);
+        $this->setUrlParams($this->config['default_params'] ?? []);
 
         return $this;
     }
@@ -38,13 +39,9 @@ class Grammar extends GrammarBase
      */
     public function compileExists(Builder $query): string
     {
-        $urlQuery = $this->compileSelect($query);
+        $this->handleQueryType('exists');
 
-        $queryType = str_contains($urlQuery, '?')
-            ? '&queryType=exists'
-            : '?queryType=exists';
-
-        return $urlQuery . $queryType;
+        return $this->compileSelect($query);
     }
 
     /**
@@ -55,18 +52,9 @@ class Grammar extends GrammarBase
     protected function compileAggregate(Builder $query, $aggregate): string
     {
         $query->aggregate = null;
-        $urlQuery = $this->compileSelect($query);
+        $this->handleQueryType($aggregate['function'], $aggregate['columns'] ?? null);
 
-        $queryType = str_contains($urlQuery, '?')
-            ? sprintf('&queryType=%s', $aggregate['function'])
-            : sprintf('?queryType=%s', $aggregate['function']);
-
-        if (isset($aggregate['columns'])) {
-            $columns = $this->toQueryArray($aggregate['columns']);
-            $queryType .= sprintf(',%s', $columns);
-        }
-
-        return $urlQuery . $queryType;
+        return $this->compileSelect($query);
     }
 
     /**
@@ -93,36 +81,43 @@ class Grammar extends GrammarBase
             return $this->compileAggregate($query, $query->aggregate);
         }
 
-        $params = $this->config['default_params'] ?? [];
+        $this->handleSelect($query);
+        $this->handleWheres($query->wheres);
+        $this->handleOrders($query->orders);
+        $this->handleLimitOffset($query);
+        $this->handleGroupBy($query);
 
-        $this->handleSelect($query, $params);
-        $this->handleWheres($query->wheres, $params);
-        $this->handleOrders($query->orders, $params);
-        $this->handleLimitOffset($query, $params);
-        $this->handleGroupBy($query, $params);
-
-        return $this->compileUrl($query, $params);
+        return $this->compileUrl($query, $this->getUrlParams());
     }
 
-    protected function handleGroupBy($query, &$params)
+    protected function handleQueryType(string $type, array $typeParams = null)
+    {
+        if (is_array($typeParams) && (sizeof($typeParams) > 1 || $typeParams[0] != '*')) {
+            $this->setUrlParam('queryType', [$type, ...$typeParams]);
+        } else {
+            $this->setUrlParam('queryType', $type);
+        }
+    }
+
+    protected function handleGroupBy($query)
     {
         if (is_null($query->groups)) return;
 
-        $params['groupBy'] = $this->toQueryArray($query->groups);
+        $this->setUrlParam('groupBy', $query->groups);
     }
 
-    protected function handleLimitOffset($query, &$params)
+    protected function handleLimitOffset($query)
     {
         if ($query->limit) {
-            $params['limit'] = $query->limit;
+            $this->setUrlParam('limit', $query->limit);
         }
 
         if ($query->offset) {
-            $params['offset'] = $query->offset;
+            $this->setUrlParam('offset', $query->offset);
         }
     }
 
-    protected function handleSelect($query, &$params)
+    protected function handleSelect($query)
     {
         /*
          * Early return if no custom select is specified.
@@ -147,21 +142,28 @@ class Grammar extends GrammarBase
         }
 
         if (count($rawStatements)) {
-            $params['selectRaw'] = $this->toQueryArray($rawStatements);
+            $this->setUrlParam('selectRaw', $rawStatements);
         }
 
-        $params['fields'] = $this->toQueryArray($fields);
+        $this->setUrlParam('fields', $fields);
     }
 
-    protected function handleOrders($orders, &$params)
+    protected function handleOrders($orders)
     {
         if (empty($orders)) return;
 
         $formattedOrders = array_map(
-            fn ($order) => $order['direction'] === 'desc' ? '-' . $order['column'] : $order['column'],
+            fn ($order) => $this->orderToString($order),
             $orders
         );
 
-        $params['sort'] = $this->toQueryArray($formattedOrders);
+        $this->setUrlParam('sort', $formattedOrders);
+    }
+
+    protected function orderToString(array $order): string
+    {
+        return $order['direction'] === 'desc'
+            ? '-' . $order['column']
+            : $order['column'];
     }
 }
