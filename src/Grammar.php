@@ -101,7 +101,9 @@ class Grammar extends GrammarBase
 
     protected function handleGroupBy($query)
     {
-        if (is_null($query->groups)) return;
+        if (is_null($query->groups)) {
+            return;
+        }
 
         $this->setUrlParam('groupBy', $query->groups);
     }
@@ -122,7 +124,9 @@ class Grammar extends GrammarBase
         /*
          * Early return if no custom select is specified.
          */
-        if (count($query->columns) == 1 && $query->columns[0] == '*') return;
+        if (count($query->columns) == 1 && $query->columns[0] == '*') {
+            return;
+        }
 
         $fields = [];
         $rawStatements = [];
@@ -130,7 +134,7 @@ class Grammar extends GrammarBase
         foreach ($query->columns as $column) {
             if (is_string($column)) {
                 $fields[] = $column;
-            } else if ($column instanceof Expression){
+            } elseif ($column instanceof Expression) {
                 $rawStatements[] = $column->getValue();
             } else {
                 throw new RuntimeException('Closures in select statements are currently not supported');
@@ -150,7 +154,9 @@ class Grammar extends GrammarBase
 
     protected function handleOrders($orders)
     {
-        if (empty($orders)) return;
+        if (empty($orders)) {
+            return;
+        }
 
         $formattedOrders = array_map(
             fn ($order) => $this->orderToString($order),

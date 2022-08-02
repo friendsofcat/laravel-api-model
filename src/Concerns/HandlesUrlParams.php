@@ -34,7 +34,9 @@ trait HandlesUrlParams
          * Support for passing the where statement
          */
         if (is_array($operator)) {
-            if (! isset($operator['operator'])) return null;
+            if (! isset($operator['operator'])) {
+                return null;
+            }
 
             $operator = $operator['operator'];
         }
@@ -44,7 +46,7 @@ trait HandlesUrlParams
 
     protected function toQueryArray(array $value): string
     {
-        return implode($this?->config['default_array_value_separator'] ?? ',', $value);
+        return implode($this->config['default_array_value_separator'], $value);
     }
 
     public function setUrlParams(mixed $value): void
