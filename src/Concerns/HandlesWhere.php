@@ -8,27 +8,7 @@ use RuntimeException;
 
 trait HandlesWhere
 {
-    public array $operatorsWithAlias = [
-        '=' => 'e',
-        '<' => 'lt',
-        '>' => 'gt',
-        '<=' => 'lte',
-        '>=' => 'gte',
-        '<>' => 'ne',
-        '!=' => 'ne',
-        '|' => 'bo',
-        '^' => 'beo',
-        '<<' => 'ls',
-        '>>' => 'rs',
-        '&' => 'ba',
-        '&~' => 'bai',
-        '~' => 'bi',
-        '~*' => 'bim',
-        '!~' => 'nbi',
-        '!~*' => 'nbim',
-        '~~*' => 'bibim',
-        '!~~*' => 'nbibim',
-    ];
+    use HandlesUrlParams;
 
     /*
      * Simple identifier incremented when accessed.
@@ -117,27 +97,33 @@ trait HandlesWhere
      */
     private function filterKeyValue($key, $value): mixed
     {
-        // Convert timezone.
         $connTimezone = $this->config['timezone'] ?? null;
 
         if ($connTimezone && in_array($key, $this->config['datetime_keys'])) {
-            $connDtZone = new DateTimeZone($connTimezone);
-            $appDtZone = new DateTimeZone(config('app.timezone'));
-
-            if (is_string($value) && strlen($value) === 19) {
-                $value = $this->formatDateTime($value, $appDtZone, $connDtZone);
-            } elseif (is_array($value)) {
-                $value = array_map(function ($value) use ($connDtZone, $appDtZone) {
-
-                    return is_string($value) && strlen($value) === 19
-                        ? $this->formatDateTime($value, $appDtZone, $connDtZone)
-                        : $value;
-                }, $value);
-            }
+            $value = $this->convertTimezone($value, $connTimezone);
         }
 
         if (is_array($value)) {
-            $value = implode($this->config['default_array_value_separator'], $value);
+            $value = $this->toQueryArray($value);
+        }
+
+        return $value;
+    }
+
+    private function convertTimezone($value, $connTimezone)
+    {
+        $connDtZone = new DateTimeZone($connTimezone);
+        $appDtZone = new DateTimeZone(config('app.timezone'));
+
+        if (is_string($value) && strlen($value) === 19) {
+            $value = $this->formatDateTime($value, $appDtZone, $connDtZone);
+        } elseif (is_array($value)) {
+            $value = array_map(function ($value) use ($connDtZone, $appDtZone) {
+
+                return is_string($value) && strlen($value) === 19
+                    ? $this->formatDateTime($value, $appDtZone, $connDtZone)
+                    : $value;
+            }, $value);
         }
 
         return $value;
@@ -146,13 +132,6 @@ trait HandlesWhere
     private function formatDateTime($value, $appDtZone, $connDtZone): string
     {
         return (new DateTime($value, $appDtZone))->setTimezone($connDtZone)->format('Y-m-d H:i:s');
-    }
-
-    protected function getUrlSafeOperator($where)
-    {
-        if (! isset($where['operator'])) return null;
-
-        return $this->operatorsWithAlias[$where['operator']] ?? $where['operator'];
     }
 
     protected function handleWheres($wheres, &$params, $nestedLevel = -1): void
@@ -168,7 +147,7 @@ trait HandlesWhere
                 throw new RuntimeException('Unsupported query where type ' . $where['type']);
             }
 
-            $this->{$whereHandler}($where, $params, $nestedLevel);
+            $this->$whereHandler($where, $params, $nestedLevel);
         }
 
         /*
@@ -191,7 +170,7 @@ trait HandlesWhere
          * and  => logic of nest. Could be 'and' or 'or' (results of 'where(function(){})', 'orWhere(function(){})')
          */
         if (sizeof($this->nestedIds)) {
-            $params['nested'] = implode($this->config['default_array_value_separator'], $this->nestedIds);
+            $params['nested'] = $this->toQueryArray($this->nestedIds);
         }
     }
 
@@ -200,7 +179,7 @@ trait HandlesWhere
         $param = sprintf(
             "%s:%s",
             $this->getKeyForWhereClause($where),
-            str_replace(' ', '_', $this->getUrlSafeOperator($where))
+            $this->getUrlSafeOperator($where)
         );
 
         $params[$param] = $this->filterKeyValue($where['column'] ?? '', $where['value']);
@@ -254,7 +233,7 @@ trait HandlesWhere
             $this->filterKeyValue($where['column'] ?? '', $where['values'][1]),
         ];
         $key = $this->getKeyForWhereClause($where);
-        $params["$key:not_between"] = implode($this->config['default_array_value_separator'], $value);
+        $params["$key:not_between"] = $this->toQueryArray($value);
     }
 
     private function handleWhereNull($where, &$params): void

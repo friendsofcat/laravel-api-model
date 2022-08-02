@@ -6,11 +6,13 @@ use RuntimeException;
 use Illuminate\Database\Query\Builder;
 use Illuminate\Database\Query\Expression;
 use MattaDavi\LaravelApiModel\Concerns\HandlesWhere;
+use MattaDavi\LaravelApiModel\Concerns\HandlesUrlParams;
 use Illuminate\Database\Query\Grammars\Grammar as GrammarBase;
 
 class Grammar extends GrammarBase
 {
     use HandlesWhere;
+    use HandlesUrlParams;
 
     private array $config = [];
 
@@ -60,7 +62,7 @@ class Grammar extends GrammarBase
             : sprintf('?queryType=%s', $aggregate['function']);
 
         if (isset($aggregate['columns'])) {
-            $columns = implode($this->config['default_array_value_separator'], $aggregate['columns']);
+            $columns = $this->toQueryArray($aggregate['columns']);
             $queryType .= sprintf(',%s', $columns);
         }
 
@@ -106,7 +108,7 @@ class Grammar extends GrammarBase
     {
         if (is_null($query->groups)) return;
 
-        $params['groupBy'] = implode($this->config['default_array_value_separator'], $query->groups);
+        $params['groupBy'] = $this->toQueryArray($query->groups);
     }
 
     protected function handleLimitOffset($query, &$params)
@@ -145,24 +147,21 @@ class Grammar extends GrammarBase
         }
 
         if (count($rawStatements)) {
-            $params['selectRaw'] = implode($this->config['default_array_value_separator'], $rawStatements);
+            $params['selectRaw'] = $this->toQueryArray($rawStatements);
         }
 
-        $params['fields'] = implode($this->config['default_array_value_separator'], $fields);
+        $params['fields'] = $this->toQueryArray($fields);
     }
 
     protected function handleOrders($orders, &$params)
     {
         if (empty($orders)) return;
 
-        $params['sort'] = [];
+        $formattedOrders = array_map(
+            fn ($order) => $order['direction'] === 'desc' ? '-' . $order['column'] : $order['column'],
+            $orders
+        );
 
-        foreach ($orders as $order) {
-            $params['sort'][] = ($order['direction'] === 'desc')
-                ? '-' . $order['column']
-                : $order['column'];
-        }
-
-        $params['sort'] = implode($this->config['default_array_value_separator'], $params['sort']);
+        $params['sort'] = $this->toQueryArray($formattedOrders);
     }
 }
