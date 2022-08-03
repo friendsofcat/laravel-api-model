@@ -150,14 +150,6 @@ trait HandlesWhere
         }
 
         /*
-         * If trashed logic is not specified and model is using soft deletes,
-         * retrieve results with trashed. (due to JSON:API client compatibility)
-         */
-        if (! isset($this->getUrlParams()['trashed']) && ! is_null($this->config['soft_deletes_column'])) {
-            $this->setUrlParam('trashed', 'with');
-        }
-
-        /*
          * If query is using nested logic,
          * attach ordered 'legend' which will help to understand nested logic.
          *
@@ -238,23 +230,13 @@ trait HandlesWhere
     private function handleWhereNull($where): void
     {
         $key = $this->getKeyForWhereClause($where);
-
-        if ($key == $this->config['soft_deletes_column']) {
-            $this->setUrlParam('trashed', 0);
-        } else {
-            $this->setUrlParam("${key}:is_null", 1);
-        }
+        $this->setUrlParam("${key}:is_null", 1);
     }
 
     private function handleWhereNotNull($where): void
     {
         $key = $this->getKeyForWhereClause($where);
-
-        if ($key == $this->config['soft_deletes_column']) {
-            $this->setUrlParam('trashed', 'only');
-        } else {
-            $this->setUrlParam("${key}:is_not_null", 1);
-        }
+        $this->setUrlParam("${key}:is_not_null", 1);
     }
 
     private function handleWhereFullText($where): void
