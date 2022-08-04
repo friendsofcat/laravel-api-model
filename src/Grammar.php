@@ -14,11 +14,13 @@ class Grammar extends GrammarBase
     use HandlesWhere;
     use HandlesUrlParams;
 
-    private array $config = [];
+    /*
+     * Provides the ability to use external scopes, defined on API provider side.
+     */
+    protected $operators = ['scope'];
 
-    private const CONFIG_DEFAULTS = [
+    public array $config = [
         'default_array_value_separator' => ',',
-        'soft_deletes_column' => null,
     ];
 
     /**
@@ -27,7 +29,7 @@ class Grammar extends GrammarBase
      */
     public function setConfig(array $config): self
     {
-        $this->config = array_merge(self::CONFIG_DEFAULTS, $config);
+        $this->config = array_merge($this->config, $config);
         $this->setUrlParams($this->config['default_params'] ?? []);
 
         return $this;

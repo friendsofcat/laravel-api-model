@@ -2,6 +2,7 @@
 
 namespace MattaDavi\LaravelApiModel;
 
+use RuntimeException;
 use Illuminate\Database\Query\Builder;
 use Illuminate\Database\Connection as ConnectionBase;
 use Illuminate\Support\ServiceProvider as ServiceProviderBase;
@@ -19,18 +20,19 @@ class ServiceProvider extends ServiceProviderBase
         });
 
         /*
-         * Adds ability to use external scopes defined within model of API provider.
+         * Provides the ability to use external scopes, defined on API provider side.
          */
         Builder::macro(
             'externalScope',
-            function (array|string $scope, mixed $scopeArgs = [])
-            {
-                $this->operators[] = 'scope';
+            function (array|string $scope, mixed $scopeArgs = []) {
+                if (! $this->grammar instanceof Grammar) {
+                    throw new RuntimeException('External scopes are not supported for this query!');
+                }
 
                 if (is_array($scope)) {
                     foreach ($scope as $key => $value) {
-                        if (is_numeric($key)){
-                            $this->where($value, 'scope', '');
+                        if (is_numeric($key)) {
+                            $this->where($value, 'scope', []);
                         } else {
                             $this->where($key, 'scope', $value);
                         }
@@ -38,8 +40,6 @@ class ServiceProvider extends ServiceProviderBase
                 } else {
                     $this->where($scope, 'scope', $scopeArgs);
                 }
-
-                array_pop($this->operators);
             }
         );
     }
