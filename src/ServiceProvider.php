@@ -42,5 +42,33 @@ class ServiceProvider extends ServiceProviderBase
                 }
             }
         );
+
+        /*
+         * Provides the ability to eager load external relations, defined on API provider side.
+         */
+        Builder::macro(
+            'externalWith',
+            function (array|string $with) {
+                if (! $this->grammar instanceof Grammar) {
+                    throw new RuntimeException('External eager loading is not supported for this query!');
+                }
+
+                $relations = [];
+
+                if (is_array($with)) {
+                    foreach ($with as $key => $value) {
+                        if (! is_numeric($key)) {
+                            throw new RuntimeException('Constrained externalWith is currently not supported!');
+                        }
+
+                        $relations[] = $value;
+                    }
+                } else {
+                    $relations[] = $with;
+                }
+
+                $this->bindings['externalWith'] = $relations;
+            }
+        );
     }
 }

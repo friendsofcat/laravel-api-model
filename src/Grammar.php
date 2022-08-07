@@ -88,8 +88,26 @@ class Grammar extends GrammarBase
         $this->handleOrders($query->orders);
         $this->handleLimitOffset($query);
         $this->handleGroupBy($query);
+        $this->handleExternalWith($query);
 
         return $this->compileUrl($query, $this->getUrlParams());
+    }
+
+    protected function handleExternalWith($query)
+    {
+        $externalWith = data_get($query->getRawBindings(), 'externalWith');
+
+        if (is_null($externalWith)) {
+            return;
+        }
+
+        /*
+         * To support array values
+         */
+        $this->setUrlParam('include', array_map(
+            fn ($value) => str_replace($this->config['default_array_value_separator'], ':', $value),
+            $externalWith
+        ));
     }
 
     protected function handleQueryType(string $type, array $typeParams = null)

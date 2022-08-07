@@ -140,7 +140,7 @@ trait HandlesWhere
              * Every supported whereType has its own method.
              * i.e. handleWhereBasic(...)
              */
-            $whereHandler = sprintf('handleWhere%s', \Str::ucfirst($where['type']));
+            $whereHandler = 'handleWhere'. $where['type'];
 
             if (! method_exists($this, $whereHandler)) {
                 throw new RuntimeException('Unsupported query where type ' . $where['type']);

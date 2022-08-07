@@ -20,6 +20,7 @@ class Str
         'limit',
         'offset',
         'groupBy',
+        'include',
     ];
 
     /**
