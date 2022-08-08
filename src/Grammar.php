@@ -102,7 +102,8 @@ class Grammar extends GrammarBase
         }
 
         /*
-         * To support array values
+         * If there is a select constraint specified,
+         * we must ensure it is using different separator than configured array_value_separator.
          */
         $this->setUrlParam('include', array_map(
             fn ($value) => str_replace($this->config['array_value_separator'], ':', $value),
