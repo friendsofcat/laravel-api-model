@@ -3,6 +3,7 @@
 namespace MattaDavi\LaravelApiModel\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\Relation;
 
 abstract class ApiModel extends Model
 {
@@ -21,15 +22,24 @@ abstract class ApiModel extends Model
                 $currentModel = app(static::class);
                 $relationName = static::resolveRelationNameFromString($relation);
 
+                /*
+                 * Assume it is external relation if relation method does not exist on this model instance.
+                 */
                 if (! method_exists($currentModel, $relationName)) {
                     return true;
+                }
+
+                $relatedClass = $currentModel->$relationName();
+
+                if (! $relatedClass instanceof Relation) {
+                    return false;
                 }
 
                 /*
                  * If connection is not explicitly set on related model,
                  * this will avoid inheriting connection from current model.
                  */
-                $relatedModel = app($currentModel->$relationName()->getRelated()::class);
+                $relatedModel = app($relatedClass->getRelated()::class);
 
                 return $relatedModel->getConnectionName() === $currentModel->getConnectionName();
             }
