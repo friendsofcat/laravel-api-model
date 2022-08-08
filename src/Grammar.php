@@ -20,7 +20,7 @@ class Grammar extends GrammarBase
     protected $operators = ['scope'];
 
     public array $config = [
-        'default_array_value_separator' => ',',
+        'array_value_separator' => ',',
     ];
 
     /**
@@ -105,7 +105,7 @@ class Grammar extends GrammarBase
          * To support array values
          */
         $this->setUrlParam('include', array_map(
-            fn ($value) => str_replace($this->config['default_array_value_separator'], ':', $value),
+            fn ($value) => str_replace($this->config['array_value_separator'], ':', $value),
             $externalWith
         ));
     }

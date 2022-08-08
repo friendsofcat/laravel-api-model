@@ -46,7 +46,7 @@ trait HandlesUrlParams
 
     protected function toQueryArray(array $value): string
     {
-        return implode($this->config['default_array_value_separator'], $value);
+        return implode($this->config['array_value_separator'], $value);
     }
 
     public function setUrlParams(mixed $value): void
