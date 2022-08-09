@@ -52,6 +52,7 @@ trait HandlesWhere
      * and      => where logic. Possible values: 'and', 'or'
      * KEY      => affected column or where type prefixed with a unique id (i.e. ...where(KEY, '>', 5)...)
      * OPERATOR => operator appended if needed while handling where (i.e. '>', '<', '=', 'like'...)
+     *             Check $operatorsWithAlias in HandlesUrlParams trait
      */
     protected function getKeyForWhereClause(array &$where, $assignId = false): ?string
     {
@@ -71,6 +72,7 @@ trait HandlesWhere
 
             // If the key has dot and type = 'Basic', we need to change type to 'In'.
             // This fixes lazy loads.
+            // todo: check this functionality
             if ($where['type'] === 'Basic') {
                 $where['type'] = 'In';
                 $where['values'] = [$where['value']];
@@ -196,7 +198,8 @@ trait HandlesWhere
 
     private function handleWhereInRaw($where): void
     {
-        $this->handleWhereIn($where);
+        $key = $this->getKeyForWhereClause($where);
+        $this->setUrlParam("${key}:in_raw", $this->filterKeyValue($where['column'] ?? '', $where['values']));
     }
 
     private function handleWhereNotIn($where): void
@@ -207,7 +210,8 @@ trait HandlesWhere
 
     private function handleWhereNotInRaw($where): void
     {
-        $this->handleWhereNotIn($where);
+        $key = $this->getKeyForWhereClause($where);
+        $this->setUrlParam("${key}:not_in_raw", $this->filterKeyValue($where['column'] ?? '', $where['values']));
     }
 
     private function handleWhereBetween($where): void
