@@ -245,32 +245,41 @@ trait HandlesWhere
 
     private function handleWhereFullText($where): void
     {
-        $key = $this->getKeyForWhereClause($where);
-        $this->setUrlParam("${key}:fulltext", $this->filterKeyValue($where['column'] ?? '', $where['value']));
+        throw new RuntimeException('Where type Fulltext is not currently supported for API requests!');
+//        $key = $this->getKeyForWhereClause($where);
+//        $this->setUrlParam("${key}:fulltext", $this->filterKeyValue($where['column'] ?? '', $where['value']));
     }
 
     private function handleWhereDate($where): void
     {
         $key = $this->getKeyForWhereClause($where);
-        $this->setUrlParam("${key}:date", $this->filterKeyValue($where['column'] ?? '', $where['value']));
+        $operator = $this->getUrlSafeOperator($where);
+
+        $this->setUrlParam("${key}:${$operator}:date", $this->filterKeyValue($where['column'] ?? '', $where['value']));
     }
 
     private function handleWhereDay($where): void
     {
         $key = $this->getKeyForWhereClause($where);
-        $this->setUrlParam("${key}:day", $this->filterKeyValue($where['column'] ?? '', $where['value']));
+        $operator = $this->getUrlSafeOperator($where);
+
+        $this->setUrlParam("${key}:${$operator}:day", $this->filterKeyValue($where['column'] ?? '', $where['value']));
     }
 
     private function handleWhereYear($where): void
     {
         $key = $this->getKeyForWhereClause($where);
-        $this->setUrlParam("${key}:year", $this->filterKeyValue($where['column'] ?? '', $where['value']));
+        $operator = $this->getUrlSafeOperator($where);
+
+        $this->setUrlParam("${key}:${$operator}:year", $this->filterKeyValue($where['column'] ?? '', $where['value']));
     }
 
     private function handleWhereTime($where): void
     {
         $key = $this->getKeyForWhereClause($where);
-        $this->setUrlParam("${key}:time", $this->filterKeyValue($where['column'] ?? '', $where['value']));
+        $operator = $this->getUrlSafeOperator($where);
+
+        $this->setUrlParam("${key}:${$operator}:time", $this->filterKeyValue($where['column'] ?? '', $where['value']));
     }
 
     private function handleWhereNested($where, $nestedLevel, $nestedTypePostfix = ''): void
