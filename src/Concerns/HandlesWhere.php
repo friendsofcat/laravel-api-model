@@ -65,6 +65,7 @@ trait HandlesWhere
             ? sprintf('%s-%s', $this->getUniqueIdentifier(), strtolower($where['type']))
             : $where['column'];
 
+        // todo: check if this is necessary
         $dotIndex = strrpos($key, '.');
 
         if ($dotIndex !== false) {
@@ -72,7 +73,6 @@ trait HandlesWhere
 
             // If the key has dot and type = 'Basic', we need to change type to 'In'.
             // This fixes lazy loads.
-            // todo: check this functionality
             if ($where['type'] === 'Basic') {
                 $where['type'] = 'In';
                 $where['values'] = [$where['value']];
@@ -175,7 +175,14 @@ trait HandlesWhere
             $this->getUrlSafeOperator($where)
         );
 
-        $this->setUrlParam($key, $this->filterKeyValue($where['column'] ?? '', $where['value']));
+        /*
+         * Prep work for possible need of type change due to lazy load issue.
+         */
+        if($where['type'] == 'In') {
+            $this->handleWhereIn($where);
+        } else {
+            $this->setUrlParam($key, $this->filterKeyValue($where['column'] ?? '', $where['value']));
+        }
     }
 
     private function handleWhereColumn($where): void
