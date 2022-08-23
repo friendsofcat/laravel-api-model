@@ -51,7 +51,7 @@ class Connection extends ConnectionBase
     }
 
     /**
-     * @param string|false $query E.g. /articles?status=published
+     * @param string|false $query
      * @param mixed[] $bindings
      * @param bool $useReadPdo
      * @return mixed[]
@@ -146,7 +146,7 @@ class Connection extends ConnectionBase
     {
         $data = collect($this->fetchData($url));
 
-        return $data->current_page
+        return isset($data->current_page)
         ? $data->data
         : $data;
     }
