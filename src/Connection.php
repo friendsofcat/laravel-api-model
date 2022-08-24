@@ -4,7 +4,7 @@ namespace MattaDavi\LaravelApiModel;
 
 use Carbon\Carbon;
 use RuntimeException;
-use LZCompressor\LZString;
+//use LZCompressor\LZString;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Database\Grammar as GrammarBase;
@@ -117,11 +117,11 @@ class Connection extends ConnectionBase
 
         if (strlen($url) > $maxUrlLength) {
             // Compressing gives us roughly 15% shorter url
-            $url = $this->compressLongUrl(urldecode($url));
+//            $url = $this->compressLongUrl(urldecode($url));
 
-            if (strlen($url) > $maxUrlLength) {
+//            if (strlen($url) > $maxUrlLength) {
                 throw new RuntimeException('Too long url');
-            }
+//            }
         }
 
         return $url;
