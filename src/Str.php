@@ -37,18 +37,22 @@ class Str
              * As everything is treated as string in URL,
              * convert bool values to integer variants.
              */
-            if (is_bool($value)) $value = (int) $value;
+            if (is_bool($value)) {
+                $value = (int) $value;
+            }
 
             if (! is_string($value) && ! is_integer($value)) {
                 throw new RuntimeException('Value should be a string or an integer');
             }
 
-            if ($paramIndex++) $query .= '&';
+            if ($paramIndex++) {
+                $query .= '&';
+            }
 
-            if ( ! in_array($key, self::NON_FILTER_VALUES)) {
-                $query .= "filter[$key]=";
+            if (! in_array($key, self::NON_FILTER_VALUES)) {
+                $query .= "filter[${key}]=";
             } else {
-                $query .= "$key=";
+                $query .= "${key}=";
             }
 
             $query .= urlencode($value);
@@ -73,7 +77,7 @@ class Str
                 $value = urldecode($parts[1]);
 
                 if (self::startsWith($key, 'filter')) {
-                    $originalKey = str_replace(['filter[',']'], '', $key);
+                    $originalKey = str_replace(['filter[', ']'], '', $key);
                     $params[$originalKey][] = $value;
                 } else {
                     $params[$key] = $value;

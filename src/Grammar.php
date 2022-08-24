@@ -145,7 +145,7 @@ class Grammar extends GrammarBase
         /*
          * Early return if no custom select is specified.
          */
-        if (count($query->columns) == 1 && $query->columns[0] == '*') {
+        if (is_null($query->columns) || (count($query->columns) == 1 && $query->columns[0] == '*')) {
             return;
         }
 

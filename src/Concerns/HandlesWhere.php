@@ -142,7 +142,7 @@ trait HandlesWhere
              * Every supported whereType has its own method.
              * i.e. handleWhereBasic(...)
              */
-            $whereHandler = 'handleWhere'. $where['type'];
+            $whereHandler = 'handleWhere' . $where['type'];
 
             if (! method_exists($this, $whereHandler)) {
                 throw new RuntimeException('Unsupported query where type ' . $where['type']);
@@ -178,7 +178,7 @@ trait HandlesWhere
         /*
          * Prep work for possible need of type change due to lazy load issue.
          */
-        if($where['type'] == 'In') {
+        if ($where['type'] == 'In') {
             $this->handleWhereIn($where);
         } else {
             $this->setUrlParam($key, $this->filterKeyValue($where['column'] ?? '', $where['value']));
