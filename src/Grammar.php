@@ -68,6 +68,9 @@ class Grammar extends GrammarBase
     {
         $url = "/{$query->from}";
 
+        // Reset params to ensure correct re-usability of query instance.
+        $this->urlParams = [];
+
         return empty($params)
             ? $url
             : sprintf('%s?%s', $url, Str::httpBuildQuery($params));
