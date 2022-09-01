@@ -15,6 +15,10 @@ class Connection extends ConnectionBase
     public const AUTH_TYPE_PASSPORT_CLIENT_CREDENTIALS = 'passport_client_credentials';
     public const MAX_URL_LENGTH = 2048;
 
+    protected function getDefaultPostProcessor()
+    {
+        return new Processor;
+    }
     /**
      * @return GrammarBase
      */
@@ -48,6 +52,48 @@ class Connection extends ConnectionBase
 
         // Add access token to headers.
         return "Authorization: Bearer ${accessToken}";
+    }
+
+    /**
+     * @param  string  $query
+     * @param  array  $bindings
+     * @return bool
+     */
+    public function insert($query, $bindings = []): bool
+    {
+        return $this->run($query, $bindings, function ($query) {
+            $data = json_decode($query, true);
+            $table = $data['api_model_table'];
+
+            unset($data['api_model_table']);
+
+            $url = $this->getDatabaseName() . '/' . $table;
+
+            $result = $this->postData($url, $data);
+
+            return data_get($result, 'bool', false);
+        });
+    }
+
+    /**
+     * @param  string  $query
+     * @param  array  $bindings
+     * @return mixed
+     */
+    public function insertGetId($query, $bindings = []): mixed
+    {
+        return $this->run($query, $bindings, function ($query) {
+            $data = json_decode($query, true);
+            $table = $data['api_model_table'];
+
+            unset($data['api_model_table']);
+
+            $url = $this->getDatabaseName() . '/' . $table;
+
+            $result = $this->postData($url, $data, true);
+
+            return data_get($result, 'id', false);
+        });
     }
 
     /**
@@ -107,6 +153,30 @@ class Connection extends ConnectionBase
 
         return Http::withHeaders($headers)
             ->get($url)
+            ->throw()
+            ->json();
+    }
+
+    /**
+     * @param string $url
+     * @param array $data
+     * @param bool $getId
+     * @return array
+     */
+    private function postData($url, $data, $getId = false)
+    {
+        $auth = $this->getConfig('auth');
+        $headers = $this->getConfig('headers') ?: [];
+
+        if ($auth && $auth['type'] === self::AUTH_TYPE_PASSPORT_CLIENT_CREDENTIALS) {
+            $headers[] = $this->getAccessTokenHeader($auth);
+        }
+
+        return Http::withHeaders($headers)
+            ->post($url, [
+                'getId' => $getId,
+                'data' => $data,
+            ])
             ->throw()
             ->json();
     }

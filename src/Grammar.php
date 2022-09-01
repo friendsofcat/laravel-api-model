@@ -96,6 +96,28 @@ class Grammar extends GrammarBase
         return $this->compileUrl($query, $this->getUrlParams());
     }
 
+    /**
+     * Compile an insert statement into SQL.
+     *
+     * @param  \Illuminate\Database\Query\Builder  $query
+     * @param  array  $values
+     * @return string
+     */
+    public function compileInsert(Builder $query, array $values): string
+    {
+        if (empty($values)) {
+            return "{}";
+        }
+
+        if (! is_array(reset($values))) {
+            $values = [$values];
+        }
+
+        $values['api_model_table'] = $query->from;
+
+        return json_encode($values);
+    }
+
     protected function handleExternalWith($query)
     {
         $externalWith = data_get($query->getRawBindings(), 'externalWith');
