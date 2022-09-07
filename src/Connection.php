@@ -1,6 +1,6 @@
 <?php
 
-namespace MattaDavi\LaravelApiModel;
+namespace FriendsOfCat\LaravelApiModel;
 
 use Carbon\Carbon;
 use RuntimeException;

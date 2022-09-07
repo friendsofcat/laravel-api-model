@@ -1,6 +1,6 @@
 <?php
 
-namespace MattaDavi\LaravelApiModel\Concerns;
+namespace FriendsOfCat\LaravelApiModel\Concerns;
 
 trait HandlesUrlParams
 {
