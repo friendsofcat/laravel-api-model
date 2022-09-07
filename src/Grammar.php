@@ -1,12 +1,12 @@
 <?php
 
-namespace MattaDavi\LaravelApiModel;
+namespace FriendsOfCat\LaravelApiModel;
 
 use RuntimeException;
 use Illuminate\Database\Query\Builder;
 use Illuminate\Database\Query\Expression;
-use MattaDavi\LaravelApiModel\Concerns\HandlesWhere;
-use MattaDavi\LaravelApiModel\Concerns\HandlesUrlParams;
+use FriendsOfCat\LaravelApiModel\Concerns\HandlesWhere;
+use FriendsOfCat\LaravelApiModel\Concerns\HandlesUrlParams;
 use Illuminate\Database\Query\Grammars\Grammar as GrammarBase;
 
 class Grammar extends GrammarBase

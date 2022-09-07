@@ -1,6 +1,6 @@
 <?php
 
-namespace MattaDavi\LaravelApiModel\Models;
+namespace FriendsOfCat\LaravelApiModel\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\Relation;

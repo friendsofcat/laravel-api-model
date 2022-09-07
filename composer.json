@@ -1,5 +1,5 @@
 {
-    "name": "matta-davi/laravel-api-model",
+    "name": "friendsofcat/laravel-api-model",
     "description": "API driver for Laravel Eloquent models",
     "keywords": [
         "laravel",
@@ -15,21 +15,15 @@
         "nesbot/carbon": "^2.0"
     },
     "license": "MIT",
-    "authors": [
-        {
-            "name": "David Matta",
-            "email": "matta.davi@gmail.com"
-        }
-    ],
     "autoload": {
         "psr-4": {
-            "MattaDavi\\LaravelApiModel\\": "src"
+            "FriendsOfCat\\LaravelApiModel\\": "src"
         }
     },
     "extra": {
         "laravel": {
             "providers": [
-                "MattaDavi\\LaravelApiModel\\ServiceProvider"
+                "FriendsOfCat\\LaravelApiModel\\ServiceProvider"
             ]
         }
     },
