@@ -97,6 +97,22 @@ class Grammar extends GrammarBase
     }
 
     /**
+     * @param Builder $query
+     * @return string
+     */
+    public function compileDelete(Builder $query): string
+    {
+        $this->handleQueryType('delete');
+        $this->handleWheres($query->wheres);
+        // todo: $this->handleJoins();
+
+        return json_encode([
+            'api_model_table' => $query->from,
+            'api_query_params' => Str::buildQuery($this->getUrlParams()),
+        ]);
+    }
+
+    /**
      * Compile an insert statement into SQL.
      *
      * @param  \Illuminate\Database\Query\Builder  $query
@@ -113,9 +129,34 @@ class Grammar extends GrammarBase
             $values = [$values];
         }
 
-        $values['api_model_table'] = $query->from;
+        return json_encode([
+            'api_model_table' => $query->from,
+            'values' => $values
+        ]);
+    }
 
-        return json_encode($values);
+    /**
+     * Compile an update statement into SQL.
+     *
+     * @param  \Illuminate\Database\Query\Builder  $query
+     * @param  array  $values
+     * @return string
+     */
+    public function compileUpdate(Builder $query, array $values)
+    {
+        if (empty($values)) {
+            return "{}";
+        }
+
+        $this->handleQueryType('update');
+        $this->handleWheres($query->wheres);
+        // todo: $this->handleJoins();
+
+        return json_encode([
+            'api_model_table' => $query->from,
+            'api_query_params' => Str::buildQuery($this->getUrlParams()),
+            'values' => $values,
+        ]);
     }
 
     protected function handleExternalWith($query)

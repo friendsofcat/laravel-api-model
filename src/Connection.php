@@ -63,15 +63,25 @@ class Connection extends ConnectionBase
     {
         return $this->run($query, $bindings, function ($query) {
             $data = json_decode($query, true);
-            $table = $data['api_model_table'];
-
-            unset($data['api_model_table']);
-
-            $url = $this->getDatabaseName() . '/' . $table;
-
-            $result = $this->postData($url, $data);
+            $url = $this->getDatabaseName() . '/' . $data['api_model_table'];
+            $result = $this->postData($url, $data['values']);
 
             return data_get($result, 'bool', false);
+        });
+    }
+
+    /**
+     * @param  string  $query
+     * @param  array  $bindings
+     * @return bool
+     */
+    public function update($query, $bindings = []): bool
+    {
+        return $this->run($query, $bindings, function ($query) {
+            $data = json_decode($query, true);
+            $url = $this->getDatabaseName() . '/' . $data['api_model_table'];
+
+            return $this->putData($url, $data['api_query_params'], $data['values']);
         });
     }
 
@@ -84,13 +94,8 @@ class Connection extends ConnectionBase
     {
         return $this->run($query, $bindings, function ($query) {
             $data = json_decode($query, true);
-            $table = $data['api_model_table'];
-
-            unset($data['api_model_table']);
-
-            $url = $this->getDatabaseName() . '/' . $table;
-
-            $result = $this->postData($url, $data, true);
+            $url = $this->getDatabaseName() . '/' . $data['api_model_table'];
+            $result = $this->postData($url, $data['values'], true);
 
             return data_get($result, 'id', false);
         });
@@ -110,14 +115,29 @@ class Connection extends ConnectionBase
 
         return $this->run($query, $bindings, function ($query) {
             $fullUrl = $this->getDatabaseName() . $query;
-
-            // If the full URL is too long, we need to compress it.
             $url = $this->getRequestUrl($fullUrl);
-
-            // Get rows for each partial URL.
             $result = $this->getResult($url);
 
             return $this->formatResult($result);
+        });
+    }
+
+    /**
+     * @param string|false $query
+     * @param mixed[] $bindings
+     * @return int
+     */
+    public function delete($query, $bindings = [])
+    {
+        if (! $query) {
+            return 0;
+        }
+
+        return $this->run($query, $bindings, function ($query) {
+            $data = json_decode($query, true);
+            $url = $this->getDatabaseName() . '/' . $data['api_model_table'];
+
+            return $this->deleteData($url, $data['api_query_params']);
         });
     }
 
@@ -177,6 +197,51 @@ class Connection extends ConnectionBase
                 'getId' => $getId,
                 'data' => $data,
             ])
+            ->throw()
+            ->json();
+    }
+
+    /**
+     * @param string $url
+     * @param array $params
+     * @param array $data
+     * @return array
+     */
+    private function putData($url, $params, $data)
+    {
+        $auth = $this->getConfig('auth');
+        $headers = $this->getConfig('headers') ?: [];
+
+        if ($auth && $auth['type'] === self::AUTH_TYPE_PASSPORT_CLIENT_CREDENTIALS) {
+            $headers[] = $this->getAccessTokenHeader($auth);
+        }
+
+        return Http::withHeaders($headers)
+            ->put($url, [
+                'params' => $params,
+                'data' => $data,
+            ])
+            ->throw()
+            ->json();
+    }
+
+
+    /**
+     * @param string $url
+     * @param array $params
+     * @return array
+     */
+    private function deleteData($url, $params)
+    {
+        $auth = $this->getConfig('auth');
+        $headers = $this->getConfig('headers') ?: [];
+
+        if ($auth && $auth['type'] === self::AUTH_TYPE_PASSPORT_CLIENT_CREDENTIALS) {
+            $headers[] = $this->getAccessTokenHeader($auth);
+        }
+
+        return Http::withHeaders($headers)
+            ->delete($url, $params)
             ->throw()
             ->json();
     }

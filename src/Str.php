@@ -62,6 +62,22 @@ class Str
     }
 
     /**
+     * @param array $params
+     * @return array
+     */
+    public static function buildQuery(array $params): array
+    {
+        foreach ($params as $key => $value) {
+            if (! in_array($key, self::NON_FILTER_VALUES)) {
+                data_set($params, "filter.$key", $value);
+                unset($params[$key]);
+            }
+        }
+
+        return $params;
+    }
+
+    /**
      * @param string $query
      * @return array
      */
