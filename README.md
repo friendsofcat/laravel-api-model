@@ -83,6 +83,8 @@ Original with() is modified to hold only 'details' to ensure correct default eag
 ### Another features:
 - Support for `::insert()`, `::create()`, `->save()`
 
+- Support for `->update()`
+
 - Support for `->delete()`
 
 - Multiple orderBy
@@ -98,8 +100,6 @@ Original with() is modified to hold only 'details' to ensure correct default eag
 - paginator - wip
 
 - Access token authorization support
-
-Support for `update` is yet to come
 
 ---
 ```
