@@ -122,7 +122,7 @@ class Grammar extends GrammarBase
     public function compileInsert(Builder $query, array $values): string
     {
         if (empty($values)) {
-            return "{}";
+            return '{}';
         }
 
         if (! is_array(reset($values))) {
@@ -131,7 +131,7 @@ class Grammar extends GrammarBase
 
         return json_encode([
             'api_model_table' => $query->from,
-            'values' => $values
+            'values' => $values,
         ]);
     }
 
@@ -145,7 +145,7 @@ class Grammar extends GrammarBase
     public function compileUpdate(Builder $query, array $values)
     {
         if (empty($values)) {
-            return "{}";
+            return '{}';
         }
 
         $this->handleQueryType('update');

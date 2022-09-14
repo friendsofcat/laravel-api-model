@@ -13,11 +13,18 @@ use Illuminate\Database\Connection as ConnectionBase;
 class Connection extends ConnectionBase
 {
     public const AUTH_TYPE_PASSPORT_CLIENT_CREDENTIALS = 'passport_client_credentials';
+    public const AUTH_TYPE_OAUTH = 'oauth';
+
+    public const AUTH_TYPES = [
+        self::AUTH_TYPE_PASSPORT_CLIENT_CREDENTIALS,
+        self::AUTH_TYPE_OAUTH,
+    ];
+
     public const MAX_URL_LENGTH = 2048;
 
     protected function getDefaultPostProcessor()
     {
-        return new Processor;
+        return new Processor();
     }
     /**
      * @return GrammarBase
@@ -35,14 +42,24 @@ class Connection extends ConnectionBase
         $key = 'laravel-api-model|' . $this->getDatabaseName() . '|token';
         $accessToken = Cache::get($key);
 
-        if (! $accessToken) {
-            $result = Http::post($auth['url'], [
+        if (! $accessToken && $auth['type'] == self::AUTH_TYPE_OAUTH) {
+            $payload = [
                 'grant_type' => 'client_credentials',
                 'client_id' => $auth['client_id'],
                 'client_secret' => $auth['client_secret'],
-            ])
-                ->throw()
-                ->json();
+            ];
+
+            $result = match ($auth['type']) {
+                self::AUTH_TYPE_OAUTH => Http::withHeaders([
+                    'Content-Type' => 'application/json',
+                    'Accept' => 'application/json',
+                ])->post($auth['url'] . '/oauth/token', $payload)
+                    ->throw()
+                    ->json(),
+                self::AUTH_TYPE_PASSPORT_CLIENT_CREDENTIALS => Http::post($auth['url'], $payload)
+                    ->throw()
+                    ->json()
+            };
 
             $accessToken = $result['access_token'];
 
@@ -51,7 +68,7 @@ class Connection extends ConnectionBase
         }
 
         // Add access token to headers.
-        return "Authorization: Bearer ${accessToken}";
+        return "Bearer ${accessToken}";
     }
 
     /**
@@ -167,8 +184,8 @@ class Connection extends ConnectionBase
         $auth = $this->getConfig('auth');
         $headers = $this->getConfig('headers') ?: [];
 
-        if ($auth && $auth['type'] === self::AUTH_TYPE_PASSPORT_CLIENT_CREDENTIALS) {
-            $headers[] = $this->getAccessTokenHeader($auth);
+        if ($auth && in_array($auth['type'], self::AUTH_TYPES)) {
+            $headers['Authorization'] = $this->getAccessTokenHeader($auth);
         }
 
         return Http::withHeaders($headers)
@@ -188,8 +205,8 @@ class Connection extends ConnectionBase
         $auth = $this->getConfig('auth');
         $headers = $this->getConfig('headers') ?: [];
 
-        if ($auth && $auth['type'] === self::AUTH_TYPE_PASSPORT_CLIENT_CREDENTIALS) {
-            $headers[] = $this->getAccessTokenHeader($auth);
+        if ($auth && in_array($auth['type'], self::AUTH_TYPES)) {
+            $headers['Authorization'] = $this->getAccessTokenHeader($auth);
         }
 
         return Http::withHeaders($headers)
@@ -212,8 +229,8 @@ class Connection extends ConnectionBase
         $auth = $this->getConfig('auth');
         $headers = $this->getConfig('headers') ?: [];
 
-        if ($auth && $auth['type'] === self::AUTH_TYPE_PASSPORT_CLIENT_CREDENTIALS) {
-            $headers[] = $this->getAccessTokenHeader($auth);
+        if ($auth && in_array($auth['type'], self::AUTH_TYPES)) {
+            $headers['Authorization'] = $this->getAccessTokenHeader($auth);
         }
 
         return Http::withHeaders($headers)
@@ -225,7 +242,6 @@ class Connection extends ConnectionBase
             ->json();
     }
 
-
     /**
      * @param string $url
      * @param array $params
@@ -236,8 +252,8 @@ class Connection extends ConnectionBase
         $auth = $this->getConfig('auth');
         $headers = $this->getConfig('headers') ?: [];
 
-        if ($auth && $auth['type'] === self::AUTH_TYPE_PASSPORT_CLIENT_CREDENTIALS) {
-            $headers[] = $this->getAccessTokenHeader($auth);
+        if ($auth && in_array($auth['type'], self::AUTH_TYPES)) {
+            $headers['Authorization'] = $this->getAccessTokenHeader($auth);
         }
 
         return Http::withHeaders($headers)
@@ -255,7 +271,7 @@ class Connection extends ConnectionBase
 //            $url = $this->compressLongUrl(urldecode($url));
 
 //            if (strlen($url) > $maxUrlLength) {
-                throw new RuntimeException('Too long url');
+            throw new RuntimeException('Too long url');
 //            }
         }
 
@@ -282,7 +298,7 @@ class Connection extends ConnectionBase
         $data = collect($this->fetchData($url));
 
         return isset($data->current_page)
-        ? $data->data
-        : $data;
+            ? $data->data
+            : $data;
     }
 }

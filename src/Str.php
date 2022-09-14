@@ -69,7 +69,7 @@ class Str
     {
         foreach ($params as $key => $value) {
             if (! in_array($key, self::NON_FILTER_VALUES)) {
-                data_set($params, "filter.$key", $value);
+                data_set($params, "filter.${key}", $value);
                 unset($params[$key]);
             }
         }
