@@ -62,14 +62,14 @@ trait HandlesWhere
          * some previous logic, we append an identifier to a key.
          */
         $key = $assignId
-            ? sprintf('%s-%s', $this->getUniqueIdentifier(), strtolower($where['type']))
-            : $where['column'];
+            ? sprintf('%s:%s-%s', $where['boolean'], $this->getUniqueIdentifier(), strtolower($where['type']))
+            : sprintf('%s:%s', $where['boolean'], $where['column']);
 
         // todo: check if this is necessary
         $dotIndex = strrpos($key, '.');
 
         if ($dotIndex !== false) {
-            $key = substr($key, $dotIndex + 1);
+            $key = sprintf('%s:%s', $where['boolean'], substr($key, $dotIndex + 1));
 
             // If the key has dot and type = 'Basic', we need to change type to 'In'.
             // This fixes lazy loads.
@@ -86,7 +86,7 @@ trait HandlesWhere
         $nestedId = $this->nestedCursor >= 0 ? $this->nestedCursor : null;
 
         if (! is_null($nestedId)) {
-            $key = sprintf('%+u:%s:%s', $nestedId, $where['boolean'], $key);
+            $key = sprintf('%+u:%s', $nestedId, $key);
         }
 
         return $key;
