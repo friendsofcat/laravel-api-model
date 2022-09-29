@@ -3,6 +3,7 @@
 namespace FriendsOfCat\LaravelApiModel\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Relations\Relation;
 
 abstract class ApiModel extends Model
@@ -71,5 +72,56 @@ abstract class ApiModel extends Model
         return count($relations) > 1
             ? $relations[0]
             : explode(':', $relation)[0];
+    }
+
+    /**
+     * Create a new model instance that is existing.
+     *
+     * @param  array  $attributes
+     * @param  string|null  $connection
+     * @return static
+     */
+    public function newFromBuilder($attributes = [], $connection = null)
+    {
+        $model = $this->newInstance([], true);
+
+        // Ensure external eager loads are returned as models if relation is properly set.
+        foreach ($attributes as $key => $value) {
+            if (! method_exists($model, $key)) {
+                continue;
+            }
+
+            $relation = $model->{$key}();
+
+            if ($relation instanceof Relation && is_array($value)) {
+                $formattedValues = $this->formatRelation($relation, $value);
+
+                $model->setRelation($key, $formattedValues);
+                unset($attributes[$key]);
+            }
+        }
+
+        $model->setRawAttributes((array) $attributes, true);
+
+        $model->setConnection($connection ?: $this->getConnectionName());
+
+        $model->fireModelEvent('retrieved', false);
+
+        return $model;
+    }
+
+    public function formatRelation(Relation $relation, array $attributes): Collection|Model
+    {
+        return is_array(data_get($attributes, '0'))
+            ? $this->constructCollectionOfRelations($relation, $attributes)
+            : $relation->getModel()->newFromBuilder($attributes);
+    }
+
+    protected function constructCollectionOfRelations(Relation $relation, array $attributes): Collection
+    {
+        return $relation->getModel()->newCollection(array_map(
+            fn ($values) => $relation->getModel()->newFromBuilder($values),
+            $attributes
+        ));
     }
 }
