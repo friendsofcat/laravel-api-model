@@ -54,6 +54,8 @@ class User extends ApiModel
 - upsert
 - paginator - wip
 
+<br>
+
 # Supported features
 
 ## Retrieving data
