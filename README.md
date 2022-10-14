@@ -6,7 +6,6 @@ Transfers all model actions to API calls.
 
 Goes hand in hand with [Laravel API model server package.](https://github.com/friendsofcat/laravel-api-model-server)
 
----
 
 ## Usage
 #### Define API database connection
@@ -47,15 +46,13 @@ class User extends ApiModel
 
 }
 ```
----
+<br>
 
 #### Note some not fully supported features:<br>
 - cross database relations (with usage of `whereHas(...)`, eager-loads are supported)
 - JOIN
 - upsert
 - paginator - wip
-
----
 
 # Supported features
 
@@ -280,9 +277,7 @@ Example response data:
     ],
     "created_at": "2012-10-13T17:55:16",
     "updated_at": "2012-10-13T17:55:16"
-  },
-  
-  ...
+  }
 ]
 ```
 
@@ -301,13 +296,9 @@ User::insert([
     ['name' => 'Jason'],
 ])
 ```
-Transforms to request (POST):
-
+Transforms to request (POST):<br>
+`https:://example.com/api/model/users`
 ```JSON
-// https:://example.com/api/model/users
-// --------------------------------------
-// Data:
-
 {
   "getId": false,
   "values": [
@@ -358,13 +349,9 @@ $user->save();
 
 $user = User::create(['name' => 'Mark']);
 ```
-Transforms to request (POST):
-
+Transforms to request (POST):<br>
+`https:://example.com/api/model/users`
 ```JSON
-// https:://example.com/api/model/users
-// --------------------------------------
-// Data:
-
 {
   "getId": true,
   "values": [
@@ -405,13 +392,9 @@ $user->id === 1 // true
 ```PHP
 User::where('created_at', '>', now()->subDays(7))->update(['name' => 'Mark']);
 ```
-Transforms to request (PUT):
-
+Transforms to request (PUT):<br>
+`https:://example.com/api/model/users`
 ```JSON
-// https:://example.com/api/model/users
-// --------------------------------------
-// Data:
-
 {
   "params": {
     "filter": {
@@ -446,13 +429,9 @@ $user = User::find(1);
 $user->name = 'Mark';
 $user->save();
 ```
-Transforms to request (PUT):
-
+Transforms to request (PUT):<br>
+`https:://example.com/api/model/users`
 ```JSON
-// https:://example.com/api/model/users
-// --------------------------------------
-// Data:
-
 {
   "params": {
     "filter": {
@@ -469,19 +448,14 @@ Transforms to request (PUT):
 ```PHP
 $numberOfDeletedUsers = User::where('created_at', '>', now()->subDays(7))->delete();
 ```
-Transforms to request (DELETE):
-
+Transforms to request (DELETE):<br>
+`https:://example.com/api/model/users`<br>
 ```JSON
-// https:://example.com/api/model/users
-// --------------------------------------
-// Data:
-
 {
   "filter": {
     "and:created_at:gt": "2012-10-13T17:55:16"
   }
 }
-
 ```
 Example response data:
 
