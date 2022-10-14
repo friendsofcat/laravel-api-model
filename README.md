@@ -46,6 +46,9 @@ class User extends ApiModel
 
 }
 ```
+You can use this model as a regular one. Important thing is to extend `ApiModel` and set api connection.
+
+
 <br>
 
 #### Note some not fully supported features:<br>
