@@ -85,7 +85,7 @@ https:://example.com/api/model/users?filter[0:and:active:e]=1&filter[0:and:id:gt
 ```
 Example response data:
 
-```JSON
+```javascript
 [
   {
     "id": 1,
@@ -117,7 +117,7 @@ https:://example.com/api/model/users?filter[and:id:e]=1&limit=1
 ```
 Example response data:
 
-```JSON
+```javascript
 [
   {
     "id": 1,
@@ -146,7 +146,7 @@ https:://example.com/api/model/users?filter[and:created_at:gt]=2012-10-13T17:55:
 ```
 Example response data:
 
-```JSON
+```javascript
 [
   {
     "aggregate": 1000
@@ -173,7 +173,7 @@ https:://example.com/api/model/users?filter[and:created_at:gt]=2012-10-13T17:55:
 ```
 Example response data:
 
-```JSON
+```javascript
 [
   {
     "exists": true
@@ -217,7 +217,7 @@ https:://example.com/api/model/users?filter[and:isFrom:scope]=New+York%2CBoston&
 ```
 Example response data:
 
-```JSON
+```javascript
 [
   {
     "id": 1,
@@ -256,7 +256,7 @@ https:://example.com/api/model/users?include=undefined,external
 ```
 Example response data:
 
-```JSON
+```javascript
 [
   {
     "id": 1,
@@ -277,7 +277,9 @@ Example response data:
     ],
     "created_at": "2012-10-13T17:55:16",
     "updated_at": "2012-10-13T17:55:16"
-  }
+  },
+  
+  // ...
 ]
 ```
 
@@ -296,9 +298,13 @@ User::insert([
     ['name' => 'Jason'],
 ])
 ```
-Transforms to request (POST):<br>
-`https:://example.com/api/model/users`
-```JSON
+Transforms to request (POST):
+
+```javascript
+// https:://example.com/api/model/users
+// --------------------------------------
+// Data:
+
 {
   "getId": false,
   "values": [
@@ -318,7 +324,7 @@ Transforms to request (POST):<br>
 ```
 Example response data:
 
-```JSON
+```javascript
 {
   "bool": true
 }
@@ -349,9 +355,13 @@ $user->save();
 
 $user = User::create(['name' => 'Mark']);
 ```
-Transforms to request (POST):<br>
-`https:://example.com/api/model/users`
-```JSON
+Transforms to request (POST):
+
+```javascript
+// https:://example.com/api/model/users
+// --------------------------------------
+// Data:
+
 {
   "getId": true,
   "values": [
@@ -366,7 +376,7 @@ Transforms to request (POST):<br>
 ```
 Example response data:
 
-```JSON
+```javascript
 {
   "id": 1
 }
@@ -392,9 +402,13 @@ $user->id === 1 // true
 ```PHP
 User::where('created_at', '>', now()->subDays(7))->update(['name' => 'Mark']);
 ```
-Transforms to request (PUT):<br>
-`https:://example.com/api/model/users`
-```JSON
+Transforms to request (PUT):
+
+```javascript
+// https:://example.com/api/model/users
+// --------------------------------------
+// Data:
+
 {
   "params": {
     "filter": {
@@ -409,7 +423,7 @@ Transforms to request (PUT):<br>
 ```
 Example response data:
 
-```JSON
+```javascript
 42
 ```
 It returns an integer that represents the number of updated entries.
@@ -429,9 +443,13 @@ $user = User::find(1);
 $user->name = 'Mark';
 $user->save();
 ```
-Transforms to request (PUT):<br>
-`https:://example.com/api/model/users`
-```JSON
+Transforms to request (PUT):
+
+```javascript
+// https:://example.com/api/model/users
+// --------------------------------------
+// Data:
+
 {
   "params": {
     "filter": {
@@ -448,18 +466,23 @@ Transforms to request (PUT):<br>
 ```PHP
 $numberOfDeletedUsers = User::where('created_at', '>', now()->subDays(7))->delete();
 ```
-Transforms to request (DELETE):<br>
-`https:://example.com/api/model/users`<br>
-```JSON
+Transforms to request (DELETE):
+
+```javascript
+// https:://example.com/api/model/users
+// --------------------------------------
+// Data:
+
 {
   "filter": {
     "and:created_at:gt": "2012-10-13T17:55:16"
   }
 }
+
 ```
 Example response data:
 
-```JSON
+```javascript
 42
 ```
 It returns an integer that represents the number of deleted entries.
