@@ -95,9 +95,10 @@ trait HandlesWhere
     /**
      * @param string $key
      * @param string|array|integer|null $value
+     * @param bool $parseNested
      * @return mixed
      */
-    private function filterKeyValue($key, $value): mixed
+    private function filterKeyValue($key, $value, $parseNested = false): mixed
     {
         $connTimezone = $this->config['timezone'] ?? null;
 
@@ -106,7 +107,7 @@ trait HandlesWhere
         }
 
         if (is_array($value)) {
-            $value = $this->toQueryArray($value);
+            $value = $this->toQueryArray($value, $parseNested);
         }
 
         return $value;
@@ -181,7 +182,7 @@ trait HandlesWhere
         if ($where['type'] == 'In') {
             $this->handleWhereIn($where);
         } else {
-            $this->setUrlParam($key, $this->filterKeyValue($where['column'] ?? '', $where['value']));
+            $this->setUrlParam($key, $this->filterKeyValue($where['column'] ?? '', $where['value'], $where['operator'] == 'scope'));
         }
     }
 

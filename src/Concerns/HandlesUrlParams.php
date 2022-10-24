@@ -44,9 +44,16 @@ trait HandlesUrlParams
         return str_replace(' ', '_', $this->operatorsWithAlias[$operator] ?? $operator);
     }
 
-    protected function toQueryArray(array $value): string
+    protected function toQueryArray(array $value, bool $parseNested = false): string
     {
-        return implode($this->config['array_value_separator'], $value);
+        $formattedValue = $parseNested
+            ? array_map(
+                fn ($item) => is_array($item) ? implode(':', $item) : $item,
+                $value
+            )
+            : $value;
+
+        return implode($this->config['array_value_separator'], $formattedValue);
     }
 
     public function setUrlParams(mixed $value): void

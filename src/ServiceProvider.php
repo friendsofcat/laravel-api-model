@@ -24,7 +24,7 @@ class ServiceProvider extends ServiceProviderBase
          */
         Builder::macro(
             'externalScope',
-            function (array|string $scope, mixed $scopeArgs = []) {
+            function (array|string $scope, ...$scopeArgs) {
                 if (! $this->grammar instanceof Grammar) {
                     throw new RuntimeException('External scopes are not supported for this query!');
                 }
